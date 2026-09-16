@@ -1,9 +1,10 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { userEvent } from 'vitest/browser'
 import { createArrowNavigation, revealItem, type ArrowNavigationOptions } from '../../src/arrow-navigation/createArrowNavigation'
 import { createHighlightStore } from '../../src/shared/highlight'
-import { append, cleanup, frames, h, highlighted, item, track } from './helpers'
+import { append, cleanup, frames, h, highlighted, item, parkPointer, track } from './helpers'
 
+beforeEach(parkPointer)
 afterEach(cleanup)
 
 function list(children: Node[], options: ArrowNavigationOptions = {}) {
