@@ -1,0 +1,83 @@
+{
+  "name": "@guillemservera/vue-details",
+  "version": "0.1.0",
+  "description": "Tiny composables for polished Vue interfaces.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Guillem Servera",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/guillemservera/details.git",
+    "directory": "packages/vue"
+  },
+  "bugs": {
+    "url": "https://github.com/guillemservera/details/issues"
+  },
+  "homepage": "https://github.com/guillemservera/details/tree/main/packages/vue#readme",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "exports": {
+    ".": "./dist/index.js",
+    "./arrow-navigation": "./dist/arrow-navigation/index.js",
+    "./highlight-indicator": "./dist/highlight-indicator/index.js",
+    "./input-capabilities": "./dist/input-capabilities/index.js",
+    "./morph-text": "./dist/morph-text/index.js",
+    "./platform": "./dist/platform/index.js",
+    "./proximity-hover": "./dist/proximity-hover/index.js",
+    "./rolling-text": "./dist/rolling-text/index.js",
+    "./roulette-text": "./dist/roulette-text/index.js",
+    "./shortcuts": "./dist/shortcuts/index.js",
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@guillemservera/details-core": "workspace:^"
+  },
+  "peerDependencies": {
+    "vue": "^3.5.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "@vitest/browser-playwright": "^5.0.1",
+    "playwright": "^1.63.0",
+    "publint": "0.3.24",
+    "tsdown": "^0.23.0",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.1",
+    "vue": "^3.5.42",
+    "vue-tsc": "^3.3.11"
+  },
+  "keywords": [
+    "composables",
+    "headless",
+    "highlight",
+    "hover",
+    "keyboard-navigation",
+    "morph",
+    "proximity-hover",
+    "rolling-text",
+    "roulette",
+    "text-animation",
+    "text-effects",
+    "vue",
+    "vue3"
+  ],
+  "scripts": {
+    "build": "pnpm --filter @guillemservera/details-core build && tsdown",
+    "typecheck": "vue-tsc --noEmit",
+    "test": "vitest run --project unit",
+    "test:browser": "vitest run --project browser",
+    "size": "pnpm build && node scripts/check-size.mjs",
+    "publint": "publint",
+    "pack:dry": "npm pack --dry-run",
+    "ci": "pnpm typecheck && pnpm test && pnpm test:browser && pnpm size && pnpm publint && pnpm pack:dry",
+    "prepack": "pnpm build",
+    "prepublishOnly": "pnpm typecheck && pnpm test && pnpm test:browser && pnpm size && pnpm publint"
+  }
+}

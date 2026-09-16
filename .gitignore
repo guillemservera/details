@@ -1,0 +1,14 @@
+node_modules
+dist
+.vite
+*.tgz
+*.local
+.DS_Store
+test-results
+.vitest
+.astro
+.env
+.env.*
+!.env.example
+.npmrc
+.playwright-mcp/

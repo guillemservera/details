@@ -1,0 +1,22 @@
+---
+import { demos as all } from '../demos'
+
+const demos = all.map(d => d.value)
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>details</title>
+    <link rel="icon" href="data:," />
+    <script is:inline define:vars={{ demos }}>
+      // Also forwards the old playground's hash links, e.g. /#compare.
+      const hash = location.hash.slice(1)
+      location.replace(`/vue/${demos.includes(hash) ? hash : 'proximity'}`)
+    </script>
+  </head>
+  <body>
+    <a href="/vue/proximity">Vue demos</a> · <a href="/react/proximity">React demos</a>
+  </body>
+</html>

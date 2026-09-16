@@ -1,0 +1,21 @@
+---
+import Layout from '../../layouts/Layout.astro'
+import { demos, type Demo } from '../../demos'
+import MorphTextDemo from '../../demos/vue/MorphTextDemo.vue'
+import Playground from '../../demos/vue/Playground.vue'
+import RollingTextDemo from '../../demos/vue/RollingTextDemo.vue'
+import RouletteTextDemo from '../../demos/vue/RouletteTextDemo.vue'
+
+export const getStaticPaths = () => demos.map(({ value }) => ({ params: { demo: value } }))
+
+const demo = Astro.params.demo as Demo
+---
+
+<Layout title={`${demo} · vue-details`} framework="vue" demo={demo}>
+  {
+    demo === 'rolling' ? <RollingTextDemo client:load />
+    : demo === 'morph' ? <MorphTextDemo client:load />
+    : demo === 'roulette' ? <RouletteTextDemo client:load />
+    : <Playground client:load mode={demo} />
+  }
+</Layout>

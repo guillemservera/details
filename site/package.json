@@ -1,0 +1,31 @@
+{
+  "name": "@details/site",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "typecheck": "astro check && vue-tsc --noEmit"
+  },
+  "dependencies": {
+    "@astrojs/react": "^6.0.5",
+    "@astrojs/vue": "^7.0.2",
+    "@guillemservera/details-core": "workspace:*",
+    "@guillemservera/react-details": "workspace:*",
+    "@guillemservera/vue-details": "workspace:*",
+    "@tanstack/react-virtual": "^3.14.13",
+    "@tanstack/vue-virtual": "^3.13.39",
+    "astro": "^7.3.2",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "vue": "^3.5.42"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.10",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "typescript": "^5.9.3",
+    "vue-tsc": "^3.3.11"
+  }
+}

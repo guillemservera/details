@@ -1,0 +1,38 @@
+---
+import TopBar from '../components/TopBar.vue'
+import type { Demo, Framework } from '../demos'
+import '../styles/playground.css'
+
+interface Props {
+  title: string
+  framework: Framework
+  demo: Demo
+}
+
+const { title, framework, demo } = Astro.props
+---
+
+<!doctype html>
+<html lang="en" data-theme="system" data-cursor="default">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <link rel="icon" href="data:," />
+    <script is:inline>
+      // Apply the stored theme and cursor before first paint; TopBar adopts them once hydrated.
+      try {
+        const root = document.documentElement.dataset
+        const theme = localStorage.getItem('pg-theme')
+        if (theme === 'light' || theme === 'dark') root.theme = theme
+        if (localStorage.getItem('pg-cursor') === 'pointer') root.cursor = 'pointer'
+      } catch {}
+    </script>
+  </head>
+  <body style="margin: 0">
+    <div class="pg">
+      <TopBar client:load framework={framework} demo={demo} />
+      <slot />
+    </div>
+  </body>
+</html>

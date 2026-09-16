@@ -1,0 +1,18 @@
+{
+  "extends": "astro/tsconfigs/strict",
+  "include": [".astro/types.d.ts", "**/*"],
+  "exclude": ["dist"],
+  "compilerOptions": {
+    "noUncheckedIndexedAccess": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": "react",
+    "paths": {
+      "@guillemservera/vue-details": ["../packages/vue/src/index.ts"],
+      "@guillemservera/vue-details/*": ["../packages/vue/src/*/index.ts"],
+      "@guillemservera/react-details": ["../packages/react/src/index.ts"],
+      "@guillemservera/react-details/*": ["../packages/react/src/*/index.ts"],
+      "@guillemservera/details-core": ["../packages/core/src/index.ts"],
+      "@guillemservera/details-core/*": ["../packages/core/src/*/index.ts"]
+    }
+  }
+}

@@ -1,0 +1,56 @@
+name: Bug report
+description: Report a reproducible problem in a details package
+title: "[Bug]: "
+body:
+  - type: dropdown
+    id: package
+    attributes:
+      label: Package
+      options:
+        - "@guillemservera/details-core"
+        - "@guillemservera/react-details"
+        - "@guillemservera/vue-details"
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Package version
+      description: Which version of the selected package is affected?
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: input
+    id: api
+    attributes:
+      label: Affected API
+      placeholder: createProximityHover or useProximityHover
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Provide a minimal reproduction or a link to one.
+      placeholder: Include the smallest code or repository that reproduces the issue.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include React or Vue and its version if applicable, browser, OS, input device (mouse, trackpad, keyboard) and device pixel ratio or zoom level.
+    validations:
+      required: true

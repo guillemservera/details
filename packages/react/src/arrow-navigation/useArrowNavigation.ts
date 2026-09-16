@@ -1,0 +1,38 @@
+import { createArrowNavigation, createHighlightStore, type HighlightAxis } from '@guillemservera/details-core/arrow-navigation'
+import { useElements, type ElementRef } from '../shared/elements'
+import { sharedStore, useHighlightState, type HighlightState } from '../shared/highlight'
+
+export interface ArrowNavigationOptions {
+  /** `y`: ↑ ↓, `x`: ← →, `xy`: both pairs, in item order. Changing it re-creates the behavior. */
+  axis?: HighlightAxis
+  /** Wrap from the last item to the first and back. Default false. */
+  loop?: boolean
+  /** Keys also work while the pointer is over the container, before it has focus. Default true. */
+  whileHovered?: boolean
+  /** Pixels the mouse must travel before hover takes the highlight back from the keyboard. Default 6. */
+  resumeDistance?: number
+  /** Total items of a virtualized list; items carry `data-index`. Disabled items are only skipped when rendered. */
+  count?: number
+  /** Brings an unrendered item of a virtualized list into view. */
+  scrollToIndex?: (index: number) => void
+}
+
+/**
+ * Arrow keys, Home and End move the highlight; Enter and Space activate it.
+ * Alone, it behaves like plain hover (the item under the mouse is highlighted, so keys continue from it);
+ * with useProximityHover on the same container ref, that hook owns the pointer.
+ * Give the container `tabIndex={0}`: navigation moves focus to it, so virtualized items can unmount freely.
+ */
+export function useArrowNavigation(container: ElementRef, options: ArrowNavigationOptions = {}): HighlightState {
+  const store = sharedStore(container, createHighlightStore)
+  useElements([container], [options.axis], options, ([el], latest) => createArrowNavigation(el, {
+    axis: options.axis,
+    loop: () => latest().loop,
+    whileHovered: () => latest().whileHovered,
+    resumeDistance: () => latest().resumeDistance,
+    count: () => latest().count,
+    scrollToIndex: index => latest().scrollToIndex?.(index),
+    store,
+  }))
+  return useHighlightState(store)
+}

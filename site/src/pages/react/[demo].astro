@@ -1,0 +1,21 @@
+---
+import Layout from '../../layouts/Layout.astro'
+import { demos, type Demo } from '../../demos'
+import MorphTextDemo from '../../demos/react/MorphTextDemo'
+import Playground from '../../demos/react/Playground'
+import RollingTextDemo from '../../demos/react/RollingTextDemo'
+import RouletteTextDemo from '../../demos/react/RouletteTextDemo'
+
+export const getStaticPaths = () => demos.map(({ value }) => ({ params: { demo: value } }))
+
+const demo = Astro.params.demo as Demo
+---
+
+<Layout title={`${demo} · react-details`} framework="react" demo={demo}>
+  {
+    demo === 'rolling' ? <RollingTextDemo client:load />
+    : demo === 'morph' ? <MorphTextDemo client:load />
+    : demo === 'roulette' ? <RouletteTextDemo client:load />
+    : <Playground client:load mode={demo} />
+  }
+</Layout>
