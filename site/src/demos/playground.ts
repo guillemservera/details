@@ -9,11 +9,13 @@ export interface PlaygroundState {
   resumeDistance: number
   loop: boolean
   whileHovered: boolean
+  /** Forces reduced motion on the indicator; off follows the OS setting. */
+  reducedMotion: boolean
 }
 
 export const DEFAULTS = { resumeDistance: 6, loop: false, whileHovered: true }
 export const PLAIN_MAX = 10000
-export const initialState: PlaygroundState = { axis: 'y', renderer: 'virtual', count: 10000, keyboard: true, ...DEFAULTS }
+export const initialState: PlaygroundState = { axis: 'y', renderer: 'virtual', count: 10000, keyboard: true, reducedMotion: false, ...DEFAULTS }
 
 export const axes = [{ value: 'y', label: 'y' }, { value: 'x', label: 'x' }] as const
 export const renderers = (count: number) => [
@@ -66,7 +68,7 @@ export function playgroundSnippet(mode: PlaygroundMode, s: PlaygroundState) {
   }
   return [
     `useProximityHover(list${opts([axis, resume])})`,
-    `useHighlightIndicator(list, indicator)`,
+    `useHighlightIndicator(list, indicator${opts([s.reducedMotion && 'reducedMotion: true'])})`,
     s.keyboard && nav,
   ].filter(Boolean).join('\n')
 }

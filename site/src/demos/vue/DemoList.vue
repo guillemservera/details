@@ -17,6 +17,7 @@ const props = defineProps<{
   resumeDistance: number
   loop: boolean
   whileHovered: boolean
+  reducedMotion?: boolean
 }>()
 
 const list = useTemplateRef<HTMLElement>('list')
@@ -42,7 +43,10 @@ if (props.mode === 'proximity') {
     axis: props.axis,
     resumeDistance: () => props.resumeDistance,
   })
-  useHighlightIndicator(list, useTemplateRef('indicator'))
+  useHighlightIndicator(list, useTemplateRef('indicator'), {
+    // Off follows the OS setting.
+    reducedMotion: () => props.reducedMotion || undefined,
+  })
 }
 if (navigable) {
   highlight = useArrowNavigation(list, {

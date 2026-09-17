@@ -10,3 +10,6 @@
 - `usePlatform`, `useInputCapabilities` and `useShortcuts`: hydration-safe platform and pointer detection, and keyboard shortcuts with sequences, platform-aware `mod` and editable-target handling; `/shortcuts` also re-exports the core label formatters.
 - Highlight composables now update when eligible items receive focus, reconcile reparented or replaced containers, and clear detached state without retaining removed DOM.
 - `useShortcuts` now avoids running its listener setup during SSR, including Vue 3.5.0's server-side `watchPostEffect`.
+- `useHighlightIndicator`: compositor-driven Web Animations glide with an automatic per-frame fallback where `Element.animate` is missing, `reducedMotion` option (value, ref or getter), and returns `{ remeasure }`.
+- `useProximityHover`: highlights the item under the pointer in the event itself, adds the `ignore` option and returns `remeasure`.
+- `useHighlightStore(container)`: the shared highlight store and its state, exported from `/proximity-hover`, `/arrow-navigation`, `/highlight-indicator` and the root, for components that own their highlight model. It attaches to the container independently of pointer and keyboard composables, reconciles removed items and cleans up on replacement or scope disposal.

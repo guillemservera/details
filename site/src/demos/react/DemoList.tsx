@@ -11,7 +11,7 @@ interface Props extends PlaygroundState {
 }
 
 // The parent re-keys this component when mode, axis or keyboard change, so those are fixed for its lifetime.
-export default function DemoList({ mode, bare, axis, renderer, count, keyboard, resumeDistance, loop, whileHovered }: Props) {
+export default function DemoList({ mode, bare, axis, renderer, count, keyboard, resumeDistance, loop, whileHovered, reducedMotion }: Props) {
   const list = useRef<HTMLDivElement>(null)
   const indicator = useRef<HTMLDivElement>(null)
   // Never attached: hooks handed this ref stay inert, which keeps hook calls unconditional.
@@ -33,7 +33,8 @@ export default function DemoList({ mode, bare, axis, renderer, count, keyboard, 
   })
 
   const hover = useProximityHover(mode === 'proximity' ? list : off, { axis, resumeDistance })
-  useHighlightIndicator(list, indicator)
+  // reducedMotion off follows the OS setting.
+  useHighlightIndicator(list, indicator, { reducedMotion: reducedMotion || undefined })
   const nav = useArrowNavigation(navigable ? list : off, {
     axis,
     loop,

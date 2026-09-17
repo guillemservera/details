@@ -3,10 +3,12 @@ import {
   ITEM,
   RESUME_DISTANCE,
   defaultStore,
+  isEligible,
   type HighlightAxis,
   type HighlightBehavior,
   type HighlightStore,
 } from '../shared/highlight'
+import { onAncestorMotionEnd } from '../shared/motion'
 import { read, type MaybeGetter } from '../shared/options'
 
 export interface ProximityHoverOptions {
@@ -16,8 +18,19 @@ export interface ProximityHoverOptions {
   resumeDistance?: MaybeGetter<number>
   /** A click in a gap between items clicks the highlighted item. Default true. */
   gapClick?: MaybeGetter<boolean>
+  /**
+   * Selector of non-item content inside the container, such as group labels and headings: the pointer over it
+   * highlights nothing, where a real gap highlights the nearest item.
+   */
+  ignore?: string
   /** Shared highlight state. Defaults to the container's own store. */
   store?: HighlightStore
+}
+
+/** What `createProximityHover` returns. */
+export interface ProximityHover extends HighlightBehavior {
+  /** Measures the items again, for geometry that changed without a DOM mutation or a resize. */
+  remeasure: () => void
 }
 
 const OWN_CLICK = 'input, textarea, select, button, a, summary, [contenteditable], [role="button"]'
@@ -65,8 +78,8 @@ export function nearestIndex(rects: ArrayLike<number>, px: number, py: number, a
  * Items carry `data-highlight-item` (and `data-index` when virtualized); disabled items are skipped.
  * Arrow navigation and highlight indicators on the same container share its store.
  */
-export function createProximityHover(container: HTMLElement, options: ProximityHoverOptions = {}): HighlightBehavior {
-  const { axis = 'y', store = defaultStore(container) } = options
+export function createProximityHover(container: HTMLElement, options: ProximityHoverOptions = {}): ProximityHover {
+  const { axis = 'y', ignore, store = defaultStore(container) } = options
   const el = container
   let items: HTMLElement[] = []
   let rects = new Float64Array(0)
@@ -79,6 +92,7 @@ export function createProximityHover(container: HTMLElement, options: ProximityH
   let stale = true // items must be measured again
   let pickedLeft = el.scrollLeft
   let pickedTop = el.scrollTop
+  let measuredSize = ''
   let raf = 0
   const observed = new Set<Element>()
   const fresh = new Set<Element>()
@@ -92,6 +106,10 @@ export function createProximityHover(container: HTMLElement, options: ProximityH
   const mutationObserver = new MutationObserver(invalidate)
   const detach = store.attach(el)
   const release = store.claimPointer()
+  // Rects measured while an ancestor was scaled (an enter zoom) are off, and nothing mutates when it ends.
+  const stopMotionEnd = onAncestorMotionEnd(el, () => {
+    if (!stale && sizeOf(el.getBoundingClientRect()) !== measuredSize) invalidate()
+  })
 
   fresh.add(el)
   resizeObserver.observe(el)
@@ -105,9 +123,14 @@ export function createProximityHover(container: HTMLElement, options: ProximityH
     }
   }
 
+  function sizeOf(rect: DOMRect) {
+    return `${rect.width} ${rect.height}`
+  }
+
   function measure() {
     stale = false
     const box = el.getBoundingClientRect()
+    measuredSize = sizeOf(box)
     const originX = box.left + el.clientLeft - el.scrollLeft
     const originY = box.top + el.clientTop - el.scrollTop
     items = store.items()
@@ -138,13 +161,18 @@ export function createProximityHover(container: HTMLElement, options: ProximityH
 
   function pick() {
     raf = 0
-    if (!dirty || !hovering || store.pointerSuspended()) return
+    if (!hovering || store.pointerSuspended()) return
+    if (stale) measure()
+    if (!dirty) return
     // A virtualizer can re-render mid-scroll before the scroll event arrives; that event re-picks.
     if (!forced && (el.scrollLeft !== pickedLeft || el.scrollTop !== pickedTop)) return
     dirty = forced = false
     pickedLeft = el.scrollLeft
     pickedTop = el.scrollTop
-    if (stale) measure()
+    if (hitTest(el.ownerDocument.elementFromPoint(px, py), scrolled)) {
+      scrolled = false
+      return
+    }
     const box = el.getBoundingClientRect()
     const index = nearestIndex(
       rects,
@@ -161,6 +189,25 @@ export function createProximityHover(container: HTMLElement, options: ProximityH
     scrolled = false
   }
 
+  /**
+   * The element under the pointer decides first, like native `:hover`: an eligible item is highlighted at once and
+   * ignored content highlights nothing. Returns false in gaps and padding, which geometry decides.
+   */
+  function hitTest(target: Element | null, snap: boolean) {
+    if (!target || target === el || !el.contains(target)) return false
+    const item = target.closest(ITEM)
+    if (item && el.contains(item) && isEligible(item)) {
+      if (item !== store.highlighted || store.source !== 'pointer') {
+        store.snap = snap
+        store.highlight(item, 'pointer')
+      }
+      return true
+    }
+    if (!ignore || item || !target.closest(ignore)) return false
+    if (store.source === 'pointer') store.highlight(null, null)
+    return true
+  }
+
   function onPointerEnter(e: PointerEvent) {
     if (e.pointerType === 'touch') return
     hovering = true
@@ -173,6 +220,12 @@ export function createProximityHover(container: HTMLElement, options: ProximityH
     px = e.clientX
     py = e.clientY
     if (!store.acceptsPointer(e, read(options.resumeDistance) ?? RESUME_DISTANCE)) return
+    if (hitTest(e.target as Element, false)) {
+      // A pick queued for an earlier position must not override this one.
+      dirty = forced = scrolled = false
+      if (stale) schedule()
+      return
+    }
     dirty = forced = true
     schedule()
   }
@@ -208,8 +261,10 @@ export function createProximityHover(container: HTMLElement, options: ProximityH
 
   return {
     store,
+    remeasure: invalidate,
     destroy() {
       cancelAnimationFrame(raf)
+      stopMotionEnd()
       resizeObserver.disconnect()
       mutationObserver.disconnect()
       for (const [type, listener] of listeners) el.removeEventListener(type, listener as EventListener)

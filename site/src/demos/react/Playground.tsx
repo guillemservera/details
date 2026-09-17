@@ -50,10 +50,16 @@ export default function Playground({ mode }: { mode: PlaygroundMode }) {
           {mode !== 'compare' && (
             <>
               {mode === 'proximity' && (
-                <label className="control">
-                  <span className="label">keyboard</span>
-                  <input checked={s.keyboard} onChange={e => set({ keyboard: e.target.checked })} className="switch" type="checkbox" />
-                </label>
+                <>
+                  <label className="control">
+                    <span className="label">keyboard</span>
+                    <input checked={s.keyboard} onChange={e => set({ keyboard: e.target.checked })} className="switch" type="checkbox" />
+                  </label>
+                  <label className="control">
+                    <span className="label">reducedMotion</span>
+                    <input checked={s.reducedMotion} onChange={e => set({ reducedMotion: e.target.checked })} className="switch" type="checkbox" />
+                  </label>
+                </>
               )}
               <label className="control">
                 <span className="label">resumeDistance</span>

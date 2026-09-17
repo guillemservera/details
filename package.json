@@ -13,7 +13,7 @@
     "ci": "pnpm -r --workspace-concurrency=1 --filter \"./packages/*\" run ci && pnpm --filter @details/site run typecheck && pnpm --filter @details/site run build",
     "changeset": "changeset",
     "version": "changeset version",
-    "release": "pnpm build && changeset publish"
+    "release:initial": "pnpm run ci && changeset publish"
   },
   "devDependencies": {
     "@changesets/cli": "^2.29.7",

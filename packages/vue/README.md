@@ -103,13 +103,16 @@ button { position: relative; }
 
 ### `useProximityHover(container, options?)`
 
-The item under the pointer is highlighted; in gaps and padding, the nearest one is. While content scrolls under a still pointer, the highlight follows at once, like native `:hover`. Items mostly clipped at a scroll edge only win when nothing better is visible.
+The item under the pointer is highlighted in the pointer event itself, like native `:hover`; in gaps and padding, the nearest one is, from measured geometry. While content scrolls under a still pointer, the highlight follows at once. Items mostly clipped at a scroll edge only win when nothing better is visible.
 
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
 | `axis` | `'x' \| 'y' \| 'xy'` | `'y'` | Axis the nearest item is measured along: lists, strips, or grids and wrapping rows. |
 | `resumeDistance` | `MaybeRefOrGetter<number>` | `6` | Pixels the mouse must travel before it takes the highlight back from the keyboard. |
 | `gapClick` | `MaybeRefOrGetter<boolean>` | `true` | A click in a gap between items clicks the highlighted item. |
+| `ignore` | `string` | — | Selector of non-item content, such as group labels: the pointer over it highlights nothing, where a gap takes the nearest item. |
+
+Besides `{ highlighted, source }`, it returns `remeasure()`: items are measured again when they resize, when the DOM changes and when an animation or transform transition on an ancestor ends (an enter zoom); call it for any other geometry change that has no DOM mutation.
 
 ### `useArrowNavigation(container, options?)`
 
@@ -128,19 +131,33 @@ Modified keys and keys typed into inputs, textareas, selects or content-editable
 
 ### `useHighlightIndicator(container, indicator, options?)`
 
-Springs an absolutely positioned indicator onto the item matching `target`, whoever marks it: the pointer, the keyboard, `v-model` or a headless menu. The container is `position: relative` and may scroll; the indicator is `position: absolute; top: 0; left: 0`. Transform, size and opacity are written directly, with no component renders per frame. With reduced motion it fades without travelling.
+Springs an absolutely positioned indicator onto the item matching `target`, whoever marks it: the pointer, the keyboard, `v-model` or a headless menu. The container is `position: relative` and may scroll; the indicator is `position: absolute; top: 0; left: 0`. Transform, size and opacity are written directly, and the glide runs as a Web Animation on the compositor (falling back automatically to per-frame writes where `Element.animate` is missing), with no component renders per frame. With reduced motion it fades without travelling.
 
 | Option | Type | Default | Description |
 | --- | --- | --- | --- |
 | `target` | `string` | `'[data-highlighted]'` | Selector of the item to sit on, e.g. `'[aria-selected="true"]'` for the active tab. |
 | `from` | `string` | — | A new session grows out of this item and returns into it when it ends. |
 | `motion` | `'fast' \| 'smooth' \| 'moderate'` | `'smooth'` | Critically damped spring of 80, 100 or 160 ms. |
+| `reducedMotion` | `MaybeRefOrGetter<boolean \| undefined>` | OS setting | Jump instead of gliding; fades still run. Read on every update, so an app setting can drive it; `undefined` follows `prefers-reduced-motion`. |
+
+It returns `{ remeasure }`, which measures the target again, for geometry changes without a DOM mutation.
 
 A tab bar with a sliding selection pill:
 
 ```ts
 useHighlightIndicator(tabs, pill, { target: '[aria-selected="true"]', motion: 'moderate' })
 ```
+
+### `useHighlightStore(container)`
+
+The store that the highlight composables receiving `container` share, with its state: `{ store, highlighted, source }`. Exported from `/proximity-hover`, `/arrow-navigation`, `/highlight-indicator` and the package root. Use it when a component owns its own highlight model (a combobox, a headless menu):
+
+- Mirror the component's active item with `store.highlight(item, 'keyboard')`, and call `store.suspendPointer()` on every non-pointer move so a resting mouse cannot take the highlight back until it travels `resumeDistance`.
+- When the component writes `data-highlighted` itself, mirror the store into your own attribute from `store.subscribe` and point the indicator at it with `target`.
+- To pin the indicator on screen while your own code scrolls to reveal an item, measure the scroll around it and set `store.nudge = { item, dx, dy }` before the highlight reaches the DOM.
+- To keep the indicator's last frame for an exit animation, read its computed `transform`, size and opacity before unmounting and write them back inline: during a glide, inline styles hold the target.
+
+Call it during setup or inside an effect scope. It attaches the store to the container even without pointer or keyboard composables, so `store.items()` and `store.highlightIndex()` work independently. Removed items are reconciled, and the attachment is released on container replacement or scope disposal.
 
 ## Text effects
 
@@ -254,7 +271,7 @@ useShortcuts([
 ```ts
 formatShortcutLabel('mod_shift_p') // ⌘⇧P on Apple, Ctrl+Shift+P elsewhere
 formatShortcutLabel(['mod_k', '/']) // ⌘K or /
-formatShortcutLabel('g-d', { thenLabel: 'luego' }) // G luego D
+formatShortcutLabel('g-d', { thenLabel: 'luego' }) // Localized sequence separator
 formatShortcutTokens('mod_k') // [{ kind: 'key', key: 'mod', label: '⌘' }, …], for rendering one <kbd> per key
 formatShortcutKey('arrowup') // ↑
 ```
@@ -329,7 +346,7 @@ pnpm install
 pnpm dev
 ```
 
-`pnpm dev` serves the demo site (`site/`, not published) on all interfaces (port 5175): the Vue demos live under `/vue/<demo>`. When Tailscale is running it also prints a QR code with its Tailscale URL, to open it on a phone or tablet. The site imports the package sources directly, so nothing needs building first.
+`pnpm dev` starts the local demo site. It imports the package sources directly, so nothing needs building first.
 
 Commands inside `packages/vue`:
 

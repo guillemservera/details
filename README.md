@@ -48,11 +48,11 @@ Site routes: `/vue/<demo>` and `/react/<demo>` for each demo (`proximity`, `keyb
 | `pnpm test:browser` | Browser tests of every package, in Chrome |
 | `pnpm typecheck` | Type checking of packages and the site |
 | `pnpm run ci` | Everything CI runs |
-| `pnpm run version` | Applies pending Changesets to package versions and changelogs |
-| `pnpm release` | Builds and publishes packages through Changesets |
-| `pnpm changeset` | Records a change for the next release |
+| `pnpm run version` | Maintainer-only: applies pending Changesets to package versions and changelogs |
+| `pnpm release:initial` | Maintainer-only: runs CI and publishes the first versions with local npm authentication |
+| `pnpm changeset` | Records a user-visible change to include in a pull request |
 
-See [CONTRIBUTING.md](CONTRIBUTING.md).
+Contributions do not require npm access; see [CONTRIBUTING.md](CONTRIBUTING.md) for development and pull request guidance. Maintainer-only releases use per-package tags on `main`: a build job validates and packs the package without OIDC permission, then a separate job in the protected `npm` environment stages the same tarball without rebuilding or running lifecycle scripts. Public installation requires the maintainer's npm approval with 2FA. See [maintainer-only release operations](CONTRIBUTING.md#maintainer-only-release-operations) for the initial local publication and required npm Trusted Publishing binding.
 
 ## License
 

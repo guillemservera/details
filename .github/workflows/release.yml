@@ -1,0 +1,155 @@
+name: Release
+
+# Each package has its own release tag: @guillemservera/<package>@<version>.
+# npm Trusted Publishing permits staging only; a maintainer approves with 2FA.
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: details-release-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build release package
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      name: ${{ steps.package.outputs.name }}
+      version: ${{ steps.package.outputs.version }}
+      dist-tag: ${{ steps.package.outputs.dist-tag }}
+      published: ${{ steps.registry.outputs.published }}
+      artifact-id: ${{ steps.artifact.outputs.artifact-id }}
+      sha256: ${{ steps.tarball.outputs.sha256 }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require the release commit on main
+        run: git merge-base --is-ancestor HEAD refs/remotes/origin/main
+      - name: Check release tag matches a package version
+        id: package
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          DIST_TAG: ${{ github.event.release.prerelease && 'next' || 'latest' }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { appendFileSync, readFileSync } from 'node:fs';
+          const packages = ['core', 'react', 'vue'].map(dir => ({
+            ...JSON.parse(readFileSync(`packages/${dir}/package.json`, 'utf8')),
+            directory: `packages/${dir}`,
+          }));
+          const pkg = packages.find(pkg => `${pkg.name}@${pkg.version}` === process.env.RELEASE_TAG);
+          if (!pkg || pkg.private) throw new Error('Release tag must match a public package name and version');
+          appendFileSync(process.env.GITHUB_OUTPUT, `directory=${pkg.directory}\nname=${pkg.name}\nversion=${pkg.version}\ndist-tag=${process.env.DIST_TAG}\n`);
+          NODE
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+        with:
+          version: 10.17.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - run: pnpm install --frozen-lockfile
+      - name: Install Chromium for browser tests
+        run: pnpm --filter @guillemservera/details-core exec playwright install --with-deps chromium
+      - run: pnpm run ci
+      - name: Check whether the version is already published
+        id: registry
+        env:
+          PACKAGE_NAME: ${{ steps.package.outputs.name }}
+          PACKAGE_VERSION: ${{ steps.package.outputs.version }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { appendFileSync } from 'node:fs';
+          const response = await fetch(`https://registry.npmjs.org/${encodeURIComponent(process.env.PACKAGE_NAME)}`, {
+            headers: { accept: 'application/vnd.npm.install-v1+json' },
+            signal: AbortSignal.timeout(15000),
+          });
+          if (response.status === 404) throw new Error('Publish the initial version manually before configuring npm Trusted Publishing');
+          if (!response.ok) throw new Error(`npm registry returned HTTP ${response.status}`);
+          const metadata = await response.json();
+          const published = Object.hasOwn(metadata.versions, process.env.PACKAGE_VERSION);
+          appendFileSync(process.env.GITHUB_OUTPUT, `published=${published}\n`);
+          if (published) console.log('Version is already published; no staging is needed.');
+          NODE
+      - name: Pack with resolved workspace dependencies
+        if: steps.registry.outputs.published == 'false'
+        env:
+          PACKAGE_DIRECTORY: ${{ steps.package.outputs.directory }}
+        run: pnpm --dir "$PACKAGE_DIRECTORY" pack --out "$RUNNER_TEMP/details-release.tgz"
+      - name: Validate the release tarball
+        if: steps.registry.outputs.published == 'false'
+        id: tarball
+        env:
+          PACKAGE_NAME: ${{ steps.package.outputs.name }}
+          PACKAGE_VERSION: ${{ steps.package.outputs.version }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { execFileSync } from 'node:child_process';
+          import { createHash } from 'node:crypto';
+          import { appendFileSync, readFileSync } from 'node:fs';
+          const tarball = `${process.env.RUNNER_TEMP}/details-release.tgz`;
+          const pkg = JSON.parse(execFileSync('tar', ['-xOf', tarball, 'package/package.json'], { encoding: 'utf8' }));
+          if (pkg.name !== process.env.PACKAGE_NAME || pkg.version !== process.env.PACKAGE_VERSION || pkg.private) {
+            throw new Error('Packed package does not match the validated release');
+          }
+          for (const field of ['dependencies', 'optionalDependencies', 'peerDependencies']) {
+            if (Object.values(pkg[field] ?? {}).some(version => version.startsWith('workspace:'))) {
+              throw new Error(`Unresolved workspace dependency in ${field}`);
+            }
+          }
+          const sha256 = createHash('sha256').update(readFileSync(tarball)).digest('hex');
+          appendFileSync(process.env.GITHUB_OUTPUT, `sha256=${sha256}\n`);
+          NODE
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: steps.registry.outputs.published == 'false'
+        id: artifact
+        with:
+          name: details-release-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/details-release.tgz
+          if-no-files-found: error
+          retention-days: 7
+
+  stage:
+    name: Stage npm release
+    needs: build
+    if: needs.build.outputs.published == 'false'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+      - run: npm install -g npm@12 --ignore-scripts
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          artifact-ids: ${{ needs.build.outputs.artifact-id }}
+          path: ${{ runner.temp }}/npm-release
+          merge-multiple: true
+      - name: Verify the validated tarball
+        working-directory: ${{ runner.temp }}/npm-release
+        env:
+          TARBALL_SHA256: ${{ needs.build.outputs.sha256 }}
+        run: printf '%s  details-release.tgz\n' "$TARBALL_SHA256" | sha256sum --check --strict
+      - name: Stage publish
+        working-directory: ${{ runner.temp }}/npm-release
+        env:
+          PACKAGE_NAME: ${{ needs.build.outputs.name }}
+          PACKAGE_VERSION: ${{ needs.build.outputs.version }}
+          DIST_TAG: ${{ needs.build.outputs.dist-tag }}
+        run: |
+          printf 'Staging %s@%s with dist-tag %s\n' "$PACKAGE_NAME" "$PACKAGE_VERSION" "$DIST_TAG"
+          npm stage publish ./details-release.tgz --ignore-scripts --provenance --access public --tag "$DIST_TAG"

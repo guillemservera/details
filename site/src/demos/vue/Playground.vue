@@ -47,10 +47,16 @@ const snippet = computed(() => playgroundSnippet(props.mode, s))
         <Segmented v-model="s.count" :options="counts" />
       </div>
       <template v-if="mode !== 'compare'">
-        <label v-if="mode === 'proximity'" class="control">
-          <span class="label">keyboard</span>
-          <input v-model="s.keyboard" class="switch" type="checkbox">
-        </label>
+        <template v-if="mode === 'proximity'">
+          <label class="control">
+            <span class="label">keyboard</span>
+            <input v-model="s.keyboard" class="switch" type="checkbox">
+          </label>
+          <label class="control">
+            <span class="label">reducedMotion</span>
+            <input v-model="s.reducedMotion" class="switch" type="checkbox">
+          </label>
+        </template>
         <label class="control">
           <span class="label">resumeDistance</span>
           <span class="slider">

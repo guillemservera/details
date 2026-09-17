@@ -1,5 +1,5 @@
-export { useArrowNavigation } from './useArrowNavigation'
+export { useArrowNavigation, useHighlightStore } from './useArrowNavigation'
 export type { ArrowNavigationOptions } from './useArrowNavigation'
 export { HIGHLIGHT_ATTR, ITEM_ATTR, KEYBOARD_ATTR } from '@guillemservera/details-core/arrow-navigation'
-export type { HighlightAxis, HighlightSource } from '@guillemservera/details-core/arrow-navigation'
-export type { HighlightState } from '../shared/highlight'
+export type { HighlightAxis, HighlightSource, HighlightStore } from '@guillemservera/details-core/arrow-navigation'
+export type { HighlightState, HighlightStoreState } from '../shared/highlight'

@@ -1,6 +1,6 @@
 import { createArrowNavigation, createHighlightStore, type HighlightAxis } from '@guillemservera/details-core/arrow-navigation'
 import { useElements, type ElementRef } from '../shared/elements'
-import { sharedStore, useHighlightState, type HighlightState } from '../shared/highlight'
+import { highlightStoreHook, sharedStore, useHighlightState, type HighlightState } from '../shared/highlight'
 
 export interface ArrowNavigationOptions {
   /** `y`: ↑ ↓, `x`: ← →, `xy`: both pairs, in item order. Changing it re-creates the behavior. */
@@ -16,6 +16,9 @@ export interface ArrowNavigationOptions {
   /** Brings an unrendered item of a virtualized list into view. */
   scrollToIndex?: (index: number) => void
 }
+
+/** The highlight store shared by the highlight hooks on `container`, with its state. */
+export const useHighlightStore = /* @__PURE__ */ highlightStoreHook(createHighlightStore)
 
 /**
  * Arrow keys, Home and End move the highlight; Enter and Space activate it.
