@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { userEvent } from 'vitest/browser'
 import { defineComponent, h, nextTick, shallowRef } from 'vue'
-import { useHighlightIndicator } from '../../src/highlight-indicator/useHighlightIndicator'
+import { useHighlightIndicator, useHighlightStore, type HighlightStoreState } from '../../src/highlight-indicator'
 import { useProximityHover } from '../../src/proximity-hover/useProximityHover'
 import { beforePaint, item, mount, wait } from './helpers'
 
@@ -54,5 +54,84 @@ describe('useHighlightIndicator', () => {
     show.value = false
     await nextTick()
     expect(old.hasAttribute('data-highlight-indicator')).toBe(false)
+  })
+
+  it('reads a reducedMotion ref on every update and remeasures on demand', async () => {
+    const el = shallowRef<HTMLElement | null>(null)
+    const indicator = shallowRef<HTMLElement | null>(null)
+    const zoom = shallowRef<HTMLElement | null>(null)
+    const reduced = shallowRef(true)
+    const active = shallowRef(0)
+    let controls!: ReturnType<typeof useHighlightIndicator>
+    mounted = mount(defineComponent(() => {
+      controls = useHighlightIndicator(el, indicator, { target: '[data-active]', reducedMotion: reduced })
+      return () => h('div', { ref: zoom, style: 'transform-origin: 0 0' }, [
+        h('div', { ref: el, style: 'position: relative' }, [
+          h('div', { ref: indicator, style: 'position: absolute; top: 0; left: 0' }),
+          ...[0, 1].map(i => item(String(i), { 'data-active': active.value === i ? '' : undefined })),
+        ]),
+      ])
+    }))
+    await nextTick()
+    await wait(50)
+    const rows = el.value!.querySelectorAll('button')
+    active.value = 1
+    await beforePaint()
+    expect(offsetOf(indicator.value!, rows[1]!)).toBeLessThan(1)
+    reduced.value = false
+    active.value = 0
+    await beforePaint()
+    expect(offsetOf(indicator.value!, rows[0]!)).toBeGreaterThan(1)
+    await wait(250)
+    // Measured while an ancestor is scaled, then the scale goes away without any mutation inside the list.
+    zoom.value!.style.transform = 'scale(0.5)'
+    controls.remeasure()
+    await wait(250)
+    zoom.value!.style.transform = 'none'
+    await wait(50)
+    expect(offsetOf(indicator.value!, rows[0]!)).toBeGreaterThan(1)
+    controls.remeasure()
+    await wait(250)
+    expect(offsetOf(indicator.value!, rows[0]!)).toBeLessThan(1)
+  })
+
+  it('tracks indexed items, removal and container replacement without pointer or keyboard hooks', async () => {
+    const el = shallowRef<HTMLElement | null>(null)
+    const indicator = shallowRef<HTMLElement | null>(null)
+    const show = shallowRef(true)
+    const version = shallowRef(0)
+    let state!: HighlightStoreState
+    mounted = mount(defineComponent(() => {
+      useHighlightIndicator(el, indicator)
+      state = useHighlightStore(el)
+      return () => h('div', { key: version.value, ref: el, style: 'position: relative' }, [
+        h('div', { ref: indicator, style: 'position: absolute; top: 0; left: 0' }),
+        show.value ? item('A', { 'data-index': '0' }) : null,
+      ])
+    }))
+    await nextTick()
+    const a = el.value!.querySelector('button')!
+    state.store.highlightIndex(0, 'keyboard')
+    expect(state.highlighted.value).toBe(a)
+    expect(state.source.value).toBe('keyboard')
+    await wait(50)
+    expect(offsetOf(indicator.value!, a)).toBeLessThan(1)
+
+    show.value = false
+    await nextTick()
+    expect(state.highlighted.value).toBeNull()
+
+    version.value++
+    show.value = true
+    await nextTick()
+    const replacement = el.value!.querySelector('button')!
+    state.store.highlightIndex(0, 'keyboard')
+    expect(state.highlighted.value).toBe(replacement)
+    expect(replacement.hasAttribute('data-highlighted')).toBe(true)
+
+    mounted.unmount()
+    mounted = undefined
+    expect(state.highlighted.value).toBeNull()
+    expect(replacement.hasAttribute('data-highlighted')).toBe(false)
   })
 })

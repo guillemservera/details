@@ -5,6 +5,8 @@ import { createHighlightStore } from '@guillemservera/details-core/proximity-hov
 import { useArrowNavigation } from '../../src/arrow-navigation/useArrowNavigation'
 import { useProximityHover } from '../../src/proximity-hover/useProximityHover'
 import { sharedStore, type HighlightState } from '../../src/shared/highlight'
+import { useHighlightStore as useArrowStore } from '../../src/arrow-navigation'
+import { useHighlightStore } from '../../src/proximity-hover'
 import { frames, highlighted, Item, render, user, type Rendered } from './helpers'
 
 let mounted: Rendered | undefined
@@ -83,5 +85,30 @@ describe('useProximityHover', () => {
     expect(ref.current).not.toBe(old)
     await expectPointerAndKeyboard()
     expect(sharedStore(ref, createHighlightStore)).toBe(store)
+  })
+
+  it('passes ignore through and shares one store across entries', async () => {
+    let stores: unknown[] = []
+    let hover: ReturnType<typeof useProximityHover> | undefined
+    function List() {
+      const el = useRef<HTMLDivElement>(null)
+      hover = useProximityHover(el, { ignore: '[data-label]' })
+      stores = [useHighlightStore(el).store, useArrowStore(el).store, sharedStore(el, createHighlightStore)]
+      return (
+        <div ref={el} className="list">
+          <div data-label="" style={{ height: 30 }}>Label</div>
+          <Item label="A" />
+        </div>
+      )
+    }
+    mounted = render(<List />)
+    expect(new Set(stores).size).toBe(1)
+    const el = mounted.host.querySelector<HTMLElement>('.list')!
+    await user(() => userEvent.hover(el.querySelector('[data-label]')!))
+    await user(() => frames())
+    expect(highlighted(el)).toBeNull()
+    await user(() => userEvent.hover(el.querySelector('button')!))
+    expect(highlighted(el)).toBe('A')
+    hover!.remeasure()
   })
 })

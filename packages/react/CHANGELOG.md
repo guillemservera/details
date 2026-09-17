@@ -11,3 +11,6 @@
 - Highlight hooks share store identity through the container ref, follow late-mounted and replaced elements, and work under `<StrictMode>`; selection is not guaranteed to survive replacement.
 - Highlight hooks now update when eligible items receive focus, reconcile reparented or replaced containers, and clear detached state without retaining removed DOM.
 - `useShortcuts` re-attaches when its `platform` override changes, so `mod` keeps matching the current platform.
+- `useHighlightIndicator`: compositor-driven Web Animations glide with an automatic per-frame fallback where `Element.animate` is missing, `reducedMotion` option (read on every update without re-creating), and returns a stable `{ remeasure }`.
+- `useProximityHover`: highlights the item under the pointer in the event itself, adds the `ignore` option and returns a stable `remeasure`.
+- `useHighlightStore(container)`: the shared highlight store and its state, exported from `/proximity-hover`, `/arrow-navigation`, `/highlight-indicator` and the root, for components that own their highlight model. It attaches to the container independently of pointer and keyboard hooks, reconciles removed items and cleans up on replacement or unmount.

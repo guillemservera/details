@@ -1,12 +1,18 @@
-import { watch, type Ref } from 'vue'
+import { toValue, watch, type MaybeRefOrGetter, type Ref } from 'vue'
 import {
   createHighlightIndicator,
   createHighlightStore,
   type HighlightIndicatorOptions as CoreOptions,
 } from '@guillemservera/details-core/highlight-indicator'
-import { useHighlightStore } from '../shared/highlight'
+import { highlightStoreComposable, latestInstance, sharedHighlight, type Remeasure } from '../shared/highlight'
 
-export type HighlightIndicatorOptions = Omit<CoreOptions, 'store'>
+export interface HighlightIndicatorOptions extends Omit<CoreOptions, 'store' | 'reducedMotion'> {
+  /** Jump instead of gliding; fades still run. Read on every update. Default: `prefers-reduced-motion: reduce`. */
+  reducedMotion?: MaybeRefOrGetter<boolean | undefined>
+}
+
+/** The highlight store shared by the highlight composables on `container`, with its state as refs. */
+export const useHighlightStore = /* @__PURE__ */ highlightStoreComposable(createHighlightStore)
 
 /**
  * Springs an indicator onto the item matching `target`, whoever marks it: pointer, keyboard, v-model or a headless menu.
@@ -17,9 +23,18 @@ export function useHighlightIndicator(
   container: Readonly<Ref<HTMLElement | null>>,
   indicator: Readonly<Ref<HTMLElement | null>>,
   options: HighlightIndicatorOptions = {},
-): void {
-  const { store } = useHighlightStore(container, createHighlightStore)
+): Remeasure {
+  const { store } = sharedHighlight(container, createHighlightStore)
+  const { reducedMotion } = options
+  const instance = latestInstance<ReturnType<typeof createHighlightIndicator>>()
   watch([container, indicator], ([el, ind], _, onCleanup) => {
-    if (el && ind) onCleanup(createHighlightIndicator(el, ind, { ...options, store }).destroy)
+    if (el && ind) {
+      onCleanup(instance.track(createHighlightIndicator(el, ind, {
+        ...options,
+        reducedMotion: reducedMotion === undefined ? undefined : () => toValue(reducedMotion),
+        store,
+      })))
+    }
   }, { immediate: true, flush: 'post' })
+  return { remeasure: () => instance.get()?.remeasure() }
 }

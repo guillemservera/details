@@ -1,5 +1,5 @@
 export { createHighlightIndicator } from './createHighlightIndicator'
-export type { HighlightIndicatorOptions } from './createHighlightIndicator'
+export type { HighlightIndicator, HighlightIndicatorOptions } from './createHighlightIndicator'
 export { createHighlightStore, HIGHLIGHT_ATTR, ITEM_ATTR, KEYBOARD_ATTR } from '../shared/highlight'
 export type { HighlightAxis, HighlightBehavior, HighlightSource, HighlightStore } from '../shared/highlight'
 export type { MaybeGetter } from '../shared/options'

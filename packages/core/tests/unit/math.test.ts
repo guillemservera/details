@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { nextIndex } from '../../src/arrow-navigation/createArrowNavigation'
-import { stepSpring } from '../../src/highlight-indicator/createHighlightIndicator'
+import { sampleSpring, stepSpring } from '../../src/highlight-indicator/createHighlightIndicator'
 import { nearestIndex } from '../../src/proximity-hover/createProximityHover'
 
 describe('nearestIndex', () => {
@@ -67,5 +67,27 @@ describe('stepSpring', () => {
     stepSpring(a, av, target, 0.5, 0.1)
     for (let i = 0; i < 6; i++) stepSpring(b, bv, target, 0.5, 0.1 / 6)
     expect(a[0]).toBeCloseTo(b[0]!, 9)
+  })
+})
+
+describe('sampleSpring', () => {
+  it('samples the same curve as stepping, from the start to exactly the target', () => {
+    const pos = Float64Array.of(0, 0)
+    const vel = Float64Array.of(0, 900)
+    const target = Float64Array.of(120, 40)
+    const samples = sampleSpring(pos, vel, target, 0.1, 1 / 120)
+    expect([...samples[0]!]).toEqual([0, 0])
+    expect([...samples.at(-1)!]).toEqual([120, 40])
+    // The inputs are not modified.
+    expect([...pos, ...vel]).toEqual([0, 0, 0, 900])
+    const p = pos.slice()
+    const v = vel.slice()
+    stepSpring(p, v, target, 0.1, 3 / 120)
+    expect(samples[3]![0]).toBeCloseTo(p[0]!, 9)
+    expect(samples[3]![1]).toBeCloseTo(p[1]!, 9)
+    // Settles in about the spring's duration, and never runs past a second.
+    expect(samples.length).toBeGreaterThan(8)
+    expect(samples.length).toBeLessThan(20)
+    expect(sampleSpring(Float64Array.of(0), Float64Array.of(0), Float64Array.of(1e9), 10).length).toBe(121)
   })
 })

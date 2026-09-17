@@ -1,5 +1,5 @@
-export { useProximityHover } from './useProximityHover'
+export { useHighlightStore, useProximityHover } from './useProximityHover'
 export type { ProximityHoverOptions } from './useProximityHover'
 export { HIGHLIGHT_ATTR, ITEM_ATTR, KEYBOARD_ATTR } from '@guillemservera/details-core/proximity-hover'
-export type { HighlightAxis, HighlightSource } from '@guillemservera/details-core/proximity-hover'
-export type { HighlightState } from '../shared/highlight'
+export type { HighlightAxis, HighlightSource, HighlightStore } from '@guillemservera/details-core/proximity-hover'
+export type { HighlightState, HighlightStoreState, Remeasure } from '../shared/highlight'

@@ -6,11 +6,11 @@ import { gzipSync } from 'node:zlib'
 // Each subpath is measured with the relative modules it imports, which is what a consumer bundles.
 const budgets = {
   'arrow-navigation': 4,
-  'highlight-indicator': 4,
+  'highlight-indicator': 6,
   'input-capabilities': 1,
   'morph-text': 3,
   'platform': 1,
-  'proximity-hover': 4,
+  'proximity-hover': 4.5,
   'rolling-text': 3,
   'roulette-text': 5,
   'shortcuts': 4,

@@ -12,19 +12,20 @@ const useIsomorphicLayoutEffect = typeof document === 'undefined' ? useEffect : 
 
 /**
  * Runs `create` once every ref holds an element, and again when a ref holds another element or a dep changes;
- * otherwise calls the instance's `update`. A RefObject cannot notify when React swaps its element (a keyed
+ * otherwise calls the instance's `update`. Returns a stable getter of the current instance. A RefObject cannot notify when React swaps its element (a keyed
  * remount, conditional rendering), so the refs are compared in a layout effect after every commit of the calling
  * component, before paint. An element swapped by a child that re-renders on its own is picked up on this
  * component's next render. `options()` returns the options of the latest commit, for getters passed to the core.
  */
-export function useElements<const R extends readonly ElementRef[], O>(
+export function useElements<const R extends readonly ElementRef[], O, I extends Instance>(
   refs: R,
   deps: readonly unknown[],
   options: O,
-  create: (elements: { [K in keyof R]: HTMLElement }, options: () => O) => Instance,
-): void {
+  create: (elements: { [K in keyof R]: HTMLElement }, options: () => O) => I,
+): () => I | undefined {
   const latest = useRef(options)
-  const attached = useRef<{ keys: unknown[], instance?: Instance } | null>(null)
+  const attached = useRef<{ keys: unknown[], instance?: I } | null>(null)
+  const current = useRef(() => attached.current?.instance).current
 
   useIsomorphicLayoutEffect(() => {
     latest.current = options
@@ -44,4 +45,5 @@ export function useElements<const R extends readonly ElementRef[], O>(
     attached.current?.instance?.destroy()
     attached.current = null
   }, [])
+  return current
 }
