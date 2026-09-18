@@ -1,6 +1,6 @@
 {
   "name": "@guillemservera/react-details",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Tiny hooks for polished React interfaces.",
   "type": "module",
   "license": "MIT",

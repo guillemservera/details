@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { userEvent } from 'vitest/browser'
 import { defineComponent, h, nextTick, shallowRef } from 'vue'
-import { useHighlightIndicator, useHighlightStore, type HighlightStoreState } from '../../src/highlight-indicator'
+import { useHighlightIndicator, useHighlightStore, type HighlightIndicatorControls, type HighlightStoreState } from '../../src/highlight-indicator'
 import { useProximityHover } from '../../src/proximity-hover/useProximityHover'
 import { beforePaint, item, mount, wait } from './helpers'
 
@@ -62,7 +62,7 @@ describe('useHighlightIndicator', () => {
     const zoom = shallowRef<HTMLElement | null>(null)
     const reduced = shallowRef(true)
     const active = shallowRef(0)
-    let controls!: ReturnType<typeof useHighlightIndicator>
+    let controls!: HighlightIndicatorControls
     mounted = mount(defineComponent(() => {
       controls = useHighlightIndicator(el, indicator, { target: '[data-active]', reducedMotion: reduced })
       return () => h('div', { ref: zoom, style: 'transform-origin: 0 0' }, [
@@ -94,6 +94,35 @@ describe('useHighlightIndicator', () => {
     await wait(250)
     expect(offsetOf(indicator.value!, rows[0]!)).toBeLessThan(1)
   })
+  it('freezes the current paint and destroys cleanly', async () => {
+    const el = shallowRef<HTMLElement | null>(null)
+    const indicator = shallowRef<HTMLElement | null>(null)
+    const active = shallowRef(0)
+    let controls!: HighlightIndicatorControls
+    mounted = mount(defineComponent(() => {
+      controls = useHighlightIndicator(el, indicator, { target: '[data-active]' })
+      return () => h('div', { ref: el, style: 'position: relative' }, [
+        h('div', { ref: indicator, style: 'position: absolute; top: 0; left: 0' }),
+        ...[0, 1].map(i => item(String(i), { 'data-active': active.value === i ? '' : undefined })),
+      ])
+    }))
+    await nextTick()
+    await wait(100)
+    const old = indicator.value!
+    const paint = [getComputedStyle(old).opacity, getComputedStyle(old).transform, getComputedStyle(old).width, getComputedStyle(old).height]
+    controls.freeze()
+    controls.freeze()
+    active.value = 1
+    await beforePaint()
+    expect([getComputedStyle(old).opacity, getComputedStyle(old).transform, getComputedStyle(old).width, getComputedStyle(old).height]).toEqual(paint)
+    mounted.unmount()
+    mounted = undefined
+    expect(old.style.opacity).toBe('')
+    expect(old.style.transform).toBe('')
+    expect(old.style.width).toBe('')
+    expect(old.style.height).toBe('')
+  })
+
 
   it('tracks indexed items, removal and container replacement without pointer or keyboard hooks', async () => {
     const el = shallowRef<HTMLElement | null>(null)

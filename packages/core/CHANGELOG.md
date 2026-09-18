@@ -1,6 +1,19 @@
 # Changelog
 
-## 0.1.0 (unreleased)
+## 0.2.0
+
+### Minor Changes
+
+- Support public highlight integration for overlays and virtual search lists.
+
+  - Add indicator `freeze()` to preserve in-flight paint during overlay exits, with normal destruction restoring original styles. Vue and React expose the control alongside `remeasure()`.
+  - Add arrow-navigation `focusTarget`, `currentIndex`, `onIndexChange` and full-model `isDisabled` support. Preserve input editing keys and ignore IME composition.
+  - Allow Vue and React arrow navigation to use an explicit highlight store shared with another container ref.
+  - Unobserve removed proximity-hover items immediately, including rows detached during a resize callback.
+  - Collapse invisible indicator geometry after fading; clear removed targets immediately to prevent ghost scroll overflow.
+  - Remeasure after ancestor translation and width/height transitions as well as transform transitions.
+
+## 0.1.0
 
 - Initial release of `@guillemservera/details-core`.
 - Fix highlight lifecycle handling for focused, reparented and replaced containers; destroying the last attachment now clears selection and transient state without retaining removed DOM.

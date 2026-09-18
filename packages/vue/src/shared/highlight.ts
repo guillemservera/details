@@ -33,21 +33,26 @@ export interface Remeasure {
 const shared = new WeakMap<object, HighlightStoreState>()
 
 /**
- * The store and mirrored state shared by every composable that receives the same container ref, so they
- * compose across element replacement. `create` comes from the caller's own core entry, which keeps entries apart.
+ * The state can be explicitly keyed by a store when two composables use different reactive container refs for
+ * the same element (for example, a bridge's computed target and a consumer's stable panel ref).
  */
-export function sharedHighlight(container: Readonly<Ref<HTMLElement | null>>, create: () => HighlightStore): HighlightStoreState {
-  let entry = shared.get(container)
+export function sharedHighlight(
+  container: Readonly<Ref<HTMLElement | null>>,
+  create: () => HighlightStore,
+  provided?: HighlightStore,
+): HighlightStoreState {
+  let entry = shared.get(provided ?? container)
   if (!entry) {
-    const store = create()
-    const highlighted = shallowRef<HTMLElement | null>(null)
-    const source = shallowRef<HighlightSource | null>(null)
+    const store = provided ?? create()
+    const highlighted = shallowRef<HTMLElement | null>(store.highlighted)
+    const source = shallowRef<HighlightSource | null>(store.source)
     store.subscribe(() => {
       highlighted.value = store.highlighted
       source.value = store.source
     })
-    shared.set(container, (entry = { store, highlighted, source }))
+    shared.set(store, (entry = { store, highlighted, source }))
   }
+  shared.set(container, entry)
   return entry
 }
 

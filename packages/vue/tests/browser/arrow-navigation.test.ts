@@ -61,3 +61,33 @@ describe('lifecycle', () => {
     expect(highlighted(el.value!)).toBe('A')
   })
 })
+
+describe('consumer-owned navigation', () => {
+  it('keeps the designated input focused while skipping disabled model indexes', async () => {
+    const input = shallowRef<HTMLInputElement | null>(null)
+    const panel = shallowRef<HTMLElement | null>(null)
+    const current = ref(-1)
+    mounted = mount(defineComponent(() => {
+      useArrowNavigation(panel, {
+        focusTarget: input,
+        count: 3,
+        isDisabled: index => index === 1,
+        currentIndex: current,
+        onIndexChange: index => { current.value = index },
+      })
+      return () => h('div', {}, [
+        h('input', { ref: input }),
+        h('div', { ref: panel, tabindex: 0 }, [
+          item('0', { 'data-index': '0' }),
+          item('2', { 'data-index': '2' }),
+        ]),
+      ])
+    }))
+    await nextTick()
+    input.value!.focus()
+    await userEvent.keyboard('{ArrowDown}{ArrowDown}')
+    expect(current.value).toBe(2)
+    expect(highlighted(panel.value!)).toBe('2')
+    expect(document.activeElement).toBe(input.value)
+  })
+})

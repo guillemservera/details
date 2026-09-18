@@ -1,7 +1,7 @@
 export { useArrowNavigation } from './arrow-navigation/useArrowNavigation'
 export type { ArrowNavigationOptions } from './arrow-navigation/useArrowNavigation'
 export { useHighlightIndicator } from './highlight-indicator/useHighlightIndicator'
-export type { HighlightIndicatorOptions } from './highlight-indicator/useHighlightIndicator'
+export type { HighlightIndicatorControls, HighlightIndicatorOptions } from './highlight-indicator/useHighlightIndicator'
 export { useHighlightStore, useProximityHover } from './proximity-hover/useProximityHover'
 export type { ProximityHoverOptions } from './proximity-hover/useProximityHover'
 export { useRollingText } from './rolling-text/useRollingText'
