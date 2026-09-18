@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { afterEach, describe, expect, it } from 'vitest'
 import { userEvent } from 'vitest/browser'
 import { useArrowNavigation, type ArrowNavigationOptions } from '../../src/arrow-navigation/useArrowNavigation'
@@ -67,5 +67,39 @@ describe('lifecycle', () => {
     await user(() => userEvent.keyboard('{ArrowDown}{ArrowDown}{ArrowDown}'))
     // Index 0 scrolls to the start without it; the unrendered 1 and 2 need it.
     expect(calls).toEqual(['second 1', 'second 2'])
+  })
+})
+
+function ConsumerList() {
+  const panel = useRef<HTMLDivElement>(null)
+  const input = useRef<HTMLInputElement>(null)
+  const [current, setCurrent] = useState(-1)
+  useArrowNavigation(panel, {
+    focusTarget: input,
+    count: 3,
+    isDisabled: index => index === 1,
+    currentIndex: current,
+    onIndexChange: setCurrent,
+  })
+  return (
+    <>
+      <input ref={input} />
+      <div ref={panel} tabIndex={0}>
+        <Item label="0" data-index="0" />
+        <Item label="2" data-index="2" />
+      </div>
+    </>
+  )
+}
+
+describe('consumer-owned navigation', () => {
+  it('keeps the designated input focused while skipping disabled model indexes', async () => {
+    mounted = render(<ConsumerList />)
+    const input = mounted.host.querySelector<HTMLInputElement>('input')!
+    const panel = list()
+    input.focus()
+    await user(() => userEvent.keyboard('{ArrowDown}{ArrowDown}'))
+    expect(highlighted(panel)).toBe('2')
+    expect(document.activeElement).toBe(input)
   })
 })

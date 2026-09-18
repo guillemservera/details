@@ -1,6 +1,6 @@
 {
   "name": "@guillemservera/vue-details",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Tiny composables for polished Vue interfaces.",
   "type": "module",
   "license": "MIT",

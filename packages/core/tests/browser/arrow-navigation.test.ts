@@ -87,6 +87,74 @@ describe('keys', () => {
   })
 })
 
+describe('consumer-owned navigation', () => {
+
+  it('keeps an explicitly owned editable target focused and preserves Space', async () => {
+    const input = h('input')
+    const clicks: string[] = []
+    const items = ['A', 'B'].map(label => {
+      const button = item(label)
+      button.addEventListener('click', () => clicks.push(label))
+      return button
+    })
+    const { el } = list(items, { focusTarget: input })
+    append(input)
+    input.focus()
+    await userEvent.keyboard('{ArrowDown}')
+    expect(highlighted(el)).toBe('A')
+    expect(document.activeElement).toBe(input)
+    await userEvent.keyboard(' ')
+    expect(clicks).toEqual([])
+    expect(document.activeElement).toBe(input)
+  })
+
+  it('ignores IME Enter on an explicitly owned editable target', () => {
+    const input = h('input')
+    const button = item('A')
+    let clicks = 0
+    button.addEventListener('click', () => clicks++)
+    const { el } = list([button], { focusTarget: input })
+    append(input)
+    input.focus()
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', isComposing: true, bubbles: true }))
+    expect(clicks).toBe(0)
+    expect(highlighted(el)).toBeNull()
+  })
+
+  it('skips disabled indexes in the full virtual model and continues before rows mount', async () => {
+    let current = -1
+    const scrolls: number[] = []
+    const { el } = list([item('0', { 'data-index': '0' })], {
+      count: 6,
+      isDisabled: index => index === 1 || index === 2,
+      currentIndex: () => current,
+      onIndexChange: index => { current = index },
+      scrollToIndex: index => scrolls.push(index),
+    })
+    el.focus()
+    await userEvent.keyboard('{ArrowDown}{ArrowDown}{ArrowDown}')
+    expect(current).toBe(4)
+    expect(scrolls).toEqual([3, 4])
+    expect(highlighted(el)).toBeNull()
+    el.append(item('4', { 'data-index': '4' }))
+    await frames(1)
+    expect(highlighted(el)).toBe('4')
+  })
+
+  it('does nothing when every virtual index is disabled', async () => {
+    let changes = 0
+    const { el } = list([item('0', { 'data-index': '0' })], {
+      count: 3,
+      isDisabled: () => true,
+      onIndexChange: () => changes++,
+    })
+    el.focus()
+    await userEvent.keyboard('{ArrowDown}{ArrowUp}{Home}{End}')
+    expect(changes).toBe(0)
+    expect(highlighted(el)).toBeNull()
+  })
+})
+
 describe('disabled and removed items', () => {
   it('skips disabled items', async () => {
     const { el } = list([item('A'), item('B', { 'aria-disabled': 'true' }), item('C')])

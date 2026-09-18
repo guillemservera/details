@@ -88,6 +88,31 @@ describe('createHighlightIndicator', () => {
     await wait(200)
     expect(offsetOf(indicator, target)).toBeLessThan(1)
   })
+  it.each(['waapi', 'raf'] as const)('collapses its hidden box without scroll overflow (%s)', async (engine) => {
+    const target = button('A', true)
+    const { el, indicator } = setup([target], 'position: relative; height: 40px; overflow: auto')
+    track(createHighlightIndicator(el, withEngine(indicator, engine), { target: '[data-active="true"]', motion: 'fast' }))
+    await wait(200)
+    expect(indicator.style.height).toBe('40px')
+
+    target.dataset.active = 'false'
+    await wait(20)
+    expect(indicator.style.height).toBe('40px')
+    await wait(200)
+    expect(getComputedStyle(indicator).opacity).toBe('0')
+    expect(indicator.getBoundingClientRect().width).toBe(0)
+    expect(indicator.getBoundingClientRect().height).toBe(0)
+
+    target.dataset.active = 'true'
+    await wait(100)
+    target.remove()
+    await beforePaint()
+    expect(getComputedStyle(indicator).opacity).toBe('0')
+    expect(indicator.getBoundingClientRect().width).toBe(0)
+    expect(indicator.getBoundingClientRect().height).toBe(0)
+    expect(el.scrollHeight).toBe(el.clientHeight)
+  })
+
 
   it('glides with Web Animations by default, without writing styles on every frame', async () => {
     const [a, b] = [button('A', true), button('B', false)]
@@ -226,6 +251,44 @@ describe('createHighlightIndicator', () => {
     expect(indicator.style.transform).toBe('')
     expect(indicator.hasAttribute('data-highlight-indicator')).toBe(false)
   })
+  it.each(['waapi', 'raf'] as const)('freezes the rendered paint and stops future work (%s)', async (engine) => {
+    const [a, b] = [button('A', true), button('B', false)]
+    const { el, indicator } = setup([a, b])
+    indicator.style.opacity = '0.25'
+    indicator.style.transform = 'scale(2)'
+    indicator.style.width = '7px'
+    indicator.style.height = '8px'
+    const behavior = track(createHighlightIndicator(el, withEngine(indicator, engine), { target: '[data-active="true"]' }))
+    await wait(100)
+    a.dataset.active = 'false'
+    b.dataset.active = 'true'
+    await beforePaint()
+    const box = indicator.getBoundingClientRect()
+    const opacity = getComputedStyle(indicator).opacity
+
+    behavior.freeze()
+    behavior.freeze()
+    expect(indicator.getAnimations()).toHaveLength(0)
+    const frozenBox = indicator.getBoundingClientRect()
+    for (const dimension of ['x', 'y', 'width', 'height'] as const) {
+      expect(Math.abs(frozenBox[dimension] - box[dimension])).toBeLessThan(0.1)
+    }
+    expect(getComputedStyle(indicator).opacity).toBe(opacity)
+
+    b.dataset.active = 'false'
+    await wait(200)
+    expect(indicator.getBoundingClientRect().toJSON()).toEqual(frozenBox.toJSON())
+    expect(getComputedStyle(indicator).opacity).toBe(opacity)
+
+    behavior.destroy()
+    expect(indicator.getAnimations()).toHaveLength(0)
+    expect(indicator.style.opacity).toBe('0.25')
+    expect(indicator.style.transform).toBe('scale(2)')
+    expect(indicator.style.width).toBe('7px')
+    expect(indicator.style.height).toBe('8px')
+    expect(indicator.hasAttribute('data-highlight-indicator')).toBe(false)
+  })
+
 
   it.each(['waapi', 'raf'] as const)('keeps its place on screen while the keyboard scrolls the list (%s)', async (engine) => {
     const el = append(h('div', { tabindex: '0', style: 'position: relative; height: 120px; overflow: auto' }, Array.from({ length: 20 }, (_, i) => item(String(i)))))

@@ -18,10 +18,18 @@ export interface ArrowNavigationOptions {
   whileHovered?: MaybeGetter<boolean>
   /** Pixels the mouse must travel before hover takes the highlight back from the keyboard. Default 6. */
   resumeDistance?: MaybeGetter<number>
-  /** Total items of a virtualized list; items carry `data-index`. Disabled items are only skipped when rendered. */
+  /** Total items of a virtualized list; items carry `data-index`. Disabled items are skipped from the full model. */
   count?: MaybeGetter<number | undefined>
+  /** Disabled indexes in the full model, including rows that are not currently rendered. */
+  isDisabled?: (index: number) => boolean
   /** Brings an unrendered item of a virtualized list into view. */
   scrollToIndex?: (index: number) => void
+  /** An editable target explicitly owned by this navigation. Its focus is retained while moving. */
+  focusTarget?: MaybeGetter<HTMLElement | null>
+  /** Consumer-owned current index. When provided, it is the navigation starting point. */
+  currentIndex?: MaybeGetter<number | undefined>
+  /** Reports keyboard moves to a consumer-owned index model. */
+  onIndexChange?: (index: number) => void
   /** Shared highlight state. Defaults to the container's own store. */
   store?: HighlightStore
 }
@@ -89,7 +97,7 @@ export function createArrowNavigation(container: HTMLElement, options: ArrowNavi
   function pickRendered(step: NavigationStep) {
     const items = store.items()
     const current = store.highlighted
-    const index = nextIndex(current ? items.indexOf(current) : -1, items.length, step, loop())
+    const index = nextIndex(read(options.currentIndex) ?? (current ? items.indexOf(current) : -1), items.length, step, loop())
     const item = items[index]
     if (!item) return
     store.highlight(item, 'keyboard')
@@ -97,28 +105,29 @@ export function createArrowNavigation(container: HTMLElement, options: ArrowNavi
   }
 
   function pickVirtual(size: number, step: NavigationStep) {
-    const key = store.key()
     const direction = step === -1 || step === 'last' ? -1 : 1
-    let index = nextIndex(key === undefined ? -1 : Number(key), size, step, loop())
-    for (let tries = 1; index >= 0 && tries < size; tries++) {
+    let index = nextIndex(read(options.currentIndex) ?? Number(store.key() ?? -1), size, step, loop())
+    for (let tries = 0; index >= 0 && tries < size; tries++) {
       const item = store.findIndex(index)
-      if (!item || isEligible(item)) break
+      if (!options.isDisabled?.(index) && (!item || isEligible(item))) {
+        store.highlightIndex(index, 'keyboard')
+        return { index, size }
+      }
       const next = nextIndex(index, size, direction, loop())
       if (next === index) return
       index = next
     }
-    if (index < 0) return
-    store.highlightIndex(index, 'keyboard')
-    return { index, size }
   }
 
   function move(step: NavigationStep) {
     const carried = store.nudge
     const { scrollLeft, scrollTop } = el
+    const current = read(options.currentIndex)
     const size = read(options.count)
     const target = size === undefined ? pickRendered(step) : pickVirtual(size, step)
     if (!target) return
     store.suspendPointer()
+    if (current !== target.index) options.onIndexChange?.(target.index)
     const item = store.highlighted
     if (target.index === 0 || target.index === target.size - 1) {
       // The first and last items scroll all the way so the list's own padding shows too. Assigning the
@@ -138,14 +147,25 @@ export function createArrowNavigation(container: HTMLElement, options: ArrowNavi
     }
   }
 
+  function isFocusTarget(target: EventTarget | null) {
+    const focus = read(options.focusTarget)
+    return !!focus && target instanceof Node && (target === focus || focus.contains(target))
+  }
+
   function onKeyDown(e: KeyboardEvent) {
     if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return
-    if ((e.target as Element).closest?.(EDITABLE)) return
+    const designated = isFocusTarget(e.target)
+    if (!designated && (e.target as Element).closest?.(EDITABLE)) return
+    // Browsers dispatch keydown for IME composition with keyCode 229; never activate or navigate it.
+    if (e.isComposing || e.keyCode === 229) return
+    // Text editing keys keep their native semantics on the explicitly owned input; Home/End are opt-in via a
+    // container or item target, while Enter remains the intentional activation key for comboboxes.
+    if (designated && (e.key === ' ' || e.key === 'Home' || e.key === 'End')) return
 
     if (e.key === 'Enter' || e.key === ' ') {
       const item = store.highlighted
       // A focused item activates natively unless the keyboard moved the highlight away from it.
-      if (!item || (e.target !== el && store.source !== 'keyboard')) return
+      if (!item || (e.target !== el && !designated && store.source !== 'keyboard')) return
       e.preventDefault()
       item.click()
       return
@@ -154,15 +174,22 @@ export function createArrowNavigation(container: HTMLElement, options: ArrowNavi
     const step = stepFor(e.key)
     if (!step) return
     e.preventDefault()
-    // Focus follows the keyboard, so Enter activates the highlighted item rather than a previously focused one.
-    if (el.tabIndex >= 0 && document.activeElement !== el) el.focus({ preventScroll: true })
+    // Focus follows the keyboard except for an explicitly designated editable target.
+    if (!designated && el.tabIndex >= 0 && document.activeElement !== el) el.focus({ preventScroll: true })
     move(step)
   }
 
   function onDocumentKeyDown(e: KeyboardEvent) {
-    if (!hovering || !(read(options.whileHovered) ?? true) || el.contains(e.target as Node) || !stepFor(e.key)) return
+    const designated = isFocusTarget(e.target)
+    if (designated) {
+      if (e.target instanceof Node && el.contains(e.target)) return
+      onKeyDown(e)
+      return
+    }
+    if (!hovering || !(read(options.whileHovered) ?? true) || (e.target instanceof Node && el.contains(e.target)) || !stepFor(e.key)) return
     onKeyDown(e)
   }
+
 
   function onPointerMove(e: PointerEvent) {
     if (e.pointerType === 'touch') return

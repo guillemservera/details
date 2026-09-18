@@ -103,7 +103,17 @@ export function createProximityHover(container: HTMLElement, options: ProximityH
     for (const entry of entries) if (!fresh.delete(entry.target)) resized = true
     if (resized) invalidate()
   })
-  const mutationObserver = new MutationObserver(invalidate)
+  // Virtualizers can remove a row from a ResizeObserver callback. Unobserve it from the mutation
+  // callback before resize observation gathers again, even when the pointer is not hovering.
+  const mutationObserver = new MutationObserver(() => {
+    for (const item of observed) {
+      if (el.contains(item)) continue
+      observed.delete(item)
+      fresh.delete(item)
+      resizeObserver.unobserve(item)
+    }
+    invalidate()
+  })
   const detach = store.attach(el)
   const release = store.claimPointer()
   // Rects measured while an ancestor was scaled (an enter zoom) are off, and nothing mutates when it ends.

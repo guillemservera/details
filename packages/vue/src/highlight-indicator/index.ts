@@ -1,5 +1,5 @@
 export { useHighlightIndicator, useHighlightStore } from './useHighlightIndicator'
-export type { HighlightIndicatorOptions } from './useHighlightIndicator'
+export type { HighlightIndicatorControls, HighlightIndicatorOptions } from './useHighlightIndicator'
 export { HIGHLIGHT_ATTR } from '@guillemservera/details-core/highlight-indicator'
 export type { HighlightStore } from '@guillemservera/details-core/highlight-indicator'
 export type { HighlightStoreState, Remeasure } from '../shared/highlight'

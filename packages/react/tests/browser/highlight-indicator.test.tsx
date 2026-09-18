@@ -1,7 +1,7 @@
 import { useRef, type RefObject } from 'react'
 import { afterEach, describe, expect, it } from 'vitest'
 import { userEvent } from 'vitest/browser'
-import { useHighlightIndicator, useHighlightStore, type HighlightStoreState } from '../../src/highlight-indicator'
+import { useHighlightIndicator, useHighlightStore, type HighlightIndicatorControls, type HighlightStoreState } from '../../src/highlight-indicator'
 import { useProximityHover } from '../../src/proximity-hover/useProximityHover'
 import { beforePaint, Item, render, user, wait, type Rendered } from './helpers'
 
@@ -101,7 +101,7 @@ describe('useHighlightIndicator', () => {
   })
 
   it('reads the latest reducedMotion prop, keeps remeasure stable and exposes the shared store', async () => {
-    let controls: ReturnType<typeof useHighlightIndicator> | undefined
+    let controls: HighlightIndicatorControls | undefined
     let state!: ReturnType<typeof useHighlightStore>
     let list!: RefObject<HTMLDivElement | null>
     const seen = new Set<unknown>()
@@ -147,4 +147,34 @@ describe('useHighlightIndicator', () => {
     expect(state.source).toBe('keyboard')
     expect(list.current).toBeTruthy()
   })
+  it('freezes the current paint and destroys cleanly', async () => {
+    let controls!: HighlightIndicatorControls
+    function Tabs({ active }: { active: number }) {
+      const list = useRef<HTMLDivElement>(null)
+      const indicator = useRef<HTMLDivElement>(null)
+      controls = useHighlightIndicator(list, indicator, { target: '[data-active]' })
+      return (
+        <div ref={list} style={{ position: 'relative' }}>
+          <div ref={indicator} className="indicator" style={{ position: 'absolute', top: 0, left: 0 }} />
+          {[0, 1].map(i => <Item key={i} label={String(i)} data-active={active === i ? '' : undefined} />)}
+        </div>
+      )
+    }
+    mounted = render(<Tabs active={0} />)
+    await wait(100)
+    const old = mounted.host.querySelector<HTMLElement>('.indicator')!
+    const paint = [getComputedStyle(old).opacity, getComputedStyle(old).transform, getComputedStyle(old).width, getComputedStyle(old).height]
+    controls.freeze()
+    controls.freeze()
+    mounted.rerender(<Tabs active={1} />)
+    await beforePaint()
+    expect([getComputedStyle(old).opacity, getComputedStyle(old).transform, getComputedStyle(old).width, getComputedStyle(old).height]).toEqual(paint)
+    mounted.unmount()
+    mounted = undefined
+    expect(old.style.opacity).toBe('')
+    expect(old.style.transform).toBe('')
+    expect(old.style.width).toBe('')
+    expect(old.style.height).toBe('')
+  })
+
 })

@@ -32,6 +32,8 @@ export interface HighlightIndicatorOptions {
 export interface HighlightIndicator extends HighlightBehavior {
   /** Measures the target again, for geometry that changed without a DOM mutation or a resize. */
   remeasure: () => void
+  /** Stops observing and animating while keeping the indicator's rendered paint. */
+  freeze: () => void
 }
 
 /**
@@ -129,6 +131,7 @@ export function createHighlightIndicator(
   let measuredSize = ''
   let writtenSize = ''
   let destroyed = false
+  let frozen = false
   // Web Animations: the running glide and fade, with the state each one started from.
   let glide: Glide | undefined
   let fade: Fade | undefined
@@ -157,7 +160,7 @@ export function createHighlightIndicator(
   // Observer callbacks run before paint: syncing right away keeps the indicator on the same frame as the
   // content, where waiting for the next animation frame would leave it one frame behind while scrolling.
   function invalidate() {
-    if (destroyed) return
+    if (destroyed || frozen) return
     needsSync = true
     if (waapi) return update()
     if (raf) cancelAnimationFrame(raf)
@@ -195,6 +198,7 @@ export function createHighlightIndicator(
     needsSync = false
     const item = el.querySelector(selector)
     const origin = from ? el.querySelector(from) : null
+    const previous = current
     const changed = item !== current
     const snap = changed && followsHighlight && store.snap
     if (changed) {
@@ -211,6 +215,8 @@ export function createHighlightIndicator(
       if (followsHighlight) store.snap = false
     }
     if (!item) {
+      // A detached target has nothing to fade over; clear it now so its old box cannot overflow a shrinking list.
+      if (changed && previous && !el.contains(previous)) opacity = 0
       visible = false
       if (origin) measure(origin, target)
       return
@@ -232,8 +238,25 @@ export function createHighlightIndicator(
     }
   }
 
+  function collapseHidden() {
+    // Opacity alone does not remove an absolutely positioned box from scrollable overflow.
+    if (visible || opacity) return
+    fade?.stop()
+    fade = undefined
+    glide?.stop()
+    glide = undefined
+    pos.fill(0)
+    vel.fill(0)
+    target.fill(0)
+    ind.style.opacity = '0'
+    ind.style.transform = translate(0, 0)
+    ind.style.width = '0px'
+    ind.style.height = '0px'
+    writtenSize = '0 0'
+  }
+
   function frame() {
-    if (destroyed) return
+    if (destroyed || frozen) return
     raf = 0
     // One clock: a frame's timestamp can predate the step an invalidation just took (Firefox), which lost a frame.
     const now = performance.now()
@@ -242,6 +265,7 @@ export function createHighlightIndicator(
     const dt = last ? Math.min((now - last) / 1000, 0.1) : 1 / 60
     last = now
     opacity = visible ? Math.min(1, opacity + dt / FADE_IN) : Math.max(0, opacity - dt / FADE_OUT)
+    if (!visible && !opacity) collapseHidden()
     const settled = reducedMotion() ? (pos.set(target), vel.fill(0), true) : stepSpring(pos, vel, target, spring, dt)
     ind.style.opacity = String(opacity)
     ind.style.transform = translate(pos[0]!, pos[1]!)
@@ -256,6 +280,7 @@ export function createHighlightIndicator(
   // from its last frame, a retarget mid-flight takes effect at the last frame: the timeline's current time, which is
   // that frame's time (Chromium, Firefox) or now (WebKit), and never more than a frame ago.
   function update() {
+    if (destroyed || frozen) return
     const now = performance.now()
     const lastFrame = Math.min(now, Math.max(now - FRAME, Number(ind.ownerDocument.timeline.currentTime) || 0))
     const glideAt = inFlight(glide, now) ? lastFrame : now
@@ -276,7 +301,9 @@ export function createHighlightIndicator(
       vel.fill(0)
       jumped = true
     }
-    if (jumped || !same(before, target)) startGlide(glideAt)
+    const hidden = !visible && !opacity
+    if (hidden) collapseHidden()
+    if ((jumped || !same(before, target)) && !hidden) startGlide(glideAt)
     if (jumped || visible !== wasVisible) startFade(fadeAt)
   }
 
@@ -346,7 +373,10 @@ export function createHighlightIndicator(
     fade = undefined
     const to = visible ? 1 : 0
     ind.style.opacity = String(to)
-    if (opacity === to) return
+    if (opacity === to) {
+      if (!to) collapseHidden()
+      return
+    }
     const from = opacity
     const steps = Math.max(1, Math.round(Math.abs(to - from) * (visible ? FADE_IN : FADE_OUT) / SAMPLE))
     const frames = Array.from({ length: steps + 1 }, (_, i): Keyframe => ({ opacity: from + ((to - from) * i) / steps }))
@@ -354,6 +384,7 @@ export function createHighlightIndicator(
       if (fade !== own) return
       fade = undefined
       opacity = to
+      if (!to) collapseHidden()
     }), { from, to })
     fade = own
   }
@@ -361,9 +392,29 @@ export function createHighlightIndicator(
   return {
     store,
     remeasure: invalidate,
+    freeze() {
+      if (destroyed || frozen) return
+      const computed = getComputedStyle(ind)
+      const paint = (['opacity', 'transform', 'width', 'height'] as const).map(property => [
+        property,
+        computed.getPropertyValue(property) || ind.style.getPropertyValue(property),
+      ] as const)
+      frozen = true
+      cancelAnimationFrame(raf)
+      raf = 0
+      glide?.stop()
+      glide = undefined
+      fade?.stop()
+      fade = undefined
+      stopMotionEnd()
+      resizeObserver.disconnect()
+      mutationObserver.disconnect()
+      for (const [property, value] of paint) ind.style.setProperty(property, value)
+    },
     destroy() {
       if (destroyed) return
       destroyed = true
+      frozen = true
       cancelAnimationFrame(raf)
       glide?.stop()
       fade?.stop()

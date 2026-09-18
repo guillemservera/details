@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { userEvent } from 'vitest/browser'
 import { createArrowNavigation } from '../../src/arrow-navigation/createArrowNavigation'
 import { createProximityHover } from '../../src/proximity-hover/createProximityHover'
@@ -120,6 +120,50 @@ describe('createProximityHover', () => {
     a.style.height = '100px'
     await frames()
     expect(highlighted(el)).toBe('A')
+  })
+
+  it('unobserves a virtualized row removed during resize and observes it again when reinserted', async () => {
+    await parkPointer()
+    const a = item('A')
+    const b = item('B')
+    const el = append(h('div', { style: 'height: 300px; width: 200px' }, [a, b]))
+    track(createProximityHover(el))
+    await userEvent.hover(b)
+    await frames()
+    expect(highlighted(el)).toBe('B')
+
+    await parkPointer()
+    let remove = false
+    let removeOnResize: ResizeObserver
+    removeOnResize = new ResizeObserver((entries) => {
+      if (remove && entries.some(entry => entry.target === b)) {
+        b.remove()
+        removeOnResize.disconnect()
+      }
+    })
+    removeOnResize.observe(b)
+    await frames()
+
+    const unobserve = vi.spyOn(ResizeObserver.prototype, 'unobserve')
+    const observe = vi.spyOn(ResizeObserver.prototype, 'observe')
+    try {
+      remove = true
+      b.style.height = '80px'
+      await frames()
+      expect(unobserve).toHaveBeenCalledWith(b)
+
+      el.append(b)
+      await frames()
+      await userEvent.hover(b)
+      await frames()
+      expect(highlighted(el)).toBe('B')
+      expect(observe).toHaveBeenCalledWith(b)
+    }
+    finally {
+      removeOnResize.disconnect()
+      unobserve.mockRestore()
+      observe.mockRestore()
+    }
   })
 
   it('keeps the keyboard highlight until the pointer travels, even over another item', async () => {

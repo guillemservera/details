@@ -121,10 +121,15 @@ Besides `{ highlighted, source }`, it returns `remeasure()`, a stable function: 
 | `loop` | `boolean` | `false` | Wrap from the last item to the first and back. |
 | `whileHovered` | `boolean` | `true` | Keys also work while the pointer is over the container, before it has focus. |
 | `resumeDistance` | `number` | `6` | Pixels the mouse must travel before hover takes the highlight back. |
-| `count` | `number` | — | Total items of a virtualized list. Disabled items are only skipped when rendered. |
+| `count` | `number` | — | Total items of a virtualized list; indexes belong on the actual highlighted rows. |
 | `scrollToIndex` | `(index: number) => void` | — | Brings an unrendered item of a virtualized list into view, e.g. TanStack Virtual's `scrollToIndex`. |
+| `isDisabled` | `(index: number) => boolean` | — | Skips disabled indexes throughout the virtual model, including unmounted rows. |
+| `focusTarget` | `RefObject<HTMLElement \| null>` | — | Explicit search input whose focus is retained during navigation. |
+| `currentIndex` | `number \| (() => number)` | — | Consumer-owned index to navigate from. |
+| `onIndexChange` | `(index: number) => void` | — | Updates the consumer's index after keyboard navigation. |
+| `store` | `HighlightStore` | Shared by container ref | Shares state explicitly with an integration using another container ref. |
 
-Modified keys and keys typed into inputs, textareas, selects or content-editable elements are ignored.
+Modified keys and IME composition are ignored. Keys typed into editable elements are ignored unless the element is the explicit `focusTarget`; that input keeps native Home, End and Space behavior, while arrows navigate and Enter activates the rendered highlighted row.
 
 ### `useHighlightIndicator(container, indicator, options?)`
 
@@ -137,7 +142,7 @@ Springs an absolutely positioned indicator onto the item matching `target`, whoe
 | `motion` | `'fast' \| 'smooth' \| 'moderate'` | `'smooth'` | Critically damped spring of 80, 100 or 160 ms. |
 | `reducedMotion` | `boolean` | OS setting | Jump instead of gliding; fades still run. Read on every update, so an app setting can drive it; `undefined` follows `prefers-reduced-motion`. |
 
-It returns `{ remeasure }` (stable), which measures the target again, for geometry changes without a DOM mutation.
+It returns stable `{ remeasure, freeze }` controls. `remeasure()` measures again after geometry changes without a DOM mutation. `freeze()` stops observation and animation while retaining the current rendered paint for an exit animation; it is terminal for that instance. Normal element replacement or unmount cleans up and restores the original styles.
 
 A tab bar with a sliding selection pill:
 
@@ -152,7 +157,7 @@ The store that the highlight hooks receiving `container` share, with its state: 
 - Mirror the component's active item with `store.highlight(item, 'keyboard')`, and call `store.suspendPointer()` on every non-pointer move so a resting mouse cannot take the highlight back until it travels `resumeDistance`.
 - When the component writes `data-highlighted` itself, mirror the store into your own attribute from `store.subscribe` and point the indicator at it with `target`.
 - To pin the indicator on screen while your own code scrolls to reveal an item, measure the scroll around it and set `store.nudge = { item, dx, dy }` before the highlight reaches the DOM.
-- To keep the indicator's last frame for an exit animation, read its computed `transform`, size and opacity before unmounting and write them back inline: during a glide, inline styles hold the target.
+- To keep the indicator's current frame for an exit animation, call the indicator hook's `freeze()` before the content is torn down. Normal disposal restores its original styles.
 
 The hook attaches the store to the container even without pointer or keyboard hooks, so `store.items()` and `store.highlightIndex()` work independently. Removed items are reconciled, and the attachment is released on container replacement or unmount.
 
