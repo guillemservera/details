@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.1
+
+### Patch Changes
+
+- Focus only takes the highlight when it shows a ring (`:focus-visible`). A click's focus leaves the highlight to the pointer, so leaving the list clears it, and focus the browser hands back when the window is activated again no longer leaves the item clicked last highlighted.
+
 ## 0.2.0
 
 ### Minor Changes

@@ -98,7 +98,7 @@ button { position: relative; }
 - Items carry `data-highlight-item`. In virtualized lists they also carry `data-index`.
 - The highlighted item gets `data-highlighted`; the container gets `data-keyboard-navigation` while the keyboard owns the highlight.
 - Items that are `:disabled`, `aria-disabled="true"` or `data-disabled` are skipped.
-- Touch input is ignored: there is no hover on touch screens, so taps and swipes never leave a highlight behind. Focus and keyboard still highlight.
+- Touch input is ignored: there is no hover on touch screens, so taps and swipes never leave a highlight behind. The keyboard still highlights, and so does focus with a ring (`:focus-visible`, e.g. Tab); a click's focus, or focus handed back when the window is activated again, leaves the highlight to the pointer.
 - `useProximityHover` and `useArrowNavigation` return `{ highlighted, source }`: the highlighted element and what highlighted it (`'pointer' | 'keyboard' | 'focus'`).
 
 ### `useProximityHover(container, options?)`
