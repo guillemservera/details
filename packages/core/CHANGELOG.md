@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.2
+
+### Patch Changes
+
+- A mouse press hands the highlight to the pointer again. After the keyboard highlighted another item, clicking the item under a resting pointer moved the highlight nowhere, because the click never moved the mouse and the focus it gave carried no ring; the stale highlight then survived the pointer leaving the list. A tap still leaves no highlight.
+
 ## 0.2.1
 
 ### Patch Changes

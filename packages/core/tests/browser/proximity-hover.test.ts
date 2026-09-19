@@ -272,6 +272,46 @@ describe('focus', () => {
     expect(highlighted(el)).toBeNull()
   })
 
+  it('takes the highlight to a clicked item, even when the click never moves the mouse', async () => {
+    await parkPointer()
+    const el = append(h('div', { tabindex: '0' }, [item('A'), item('B'), item('C')]))
+    track(createProximityHover(el))
+    track(createArrowNavigation(el))
+    const b = el.querySelectorAll('button')[1]!
+    await userEvent.hover(b)
+    await frames()
+    expect(highlighted(el)).toBe('B')
+    // The keyboard takes over while the pointer rests on B, then B is clicked without the mouse moving.
+    el.focus()
+    await userEvent.keyboard('{ArrowUp}')
+    expect(highlighted(el)).toBe('A')
+    await userEvent.click(b)
+    expect(highlighted(el)).toBe('B')
+    // The pointer owns it again, so leaving the list clears it.
+    await parkPointer()
+    expect(highlighted(el)).toBeNull()
+  })
+
+  it('takes the highlight to a clicked item that takes no focus of its own', async () => {
+    await parkPointer()
+    const plain = (label: string) => h('div', { 'data-highlight-item': '', 'style': 'display: block; height: 40px; width: 100%' }, [label])
+    const el = append(h('div', { tabindex: '0' }, [plain('A'), plain('B'), plain('C')]))
+    track(createProximityHover(el))
+    track(createArrowNavigation(el))
+    const b = el.querySelectorAll('[data-highlight-item]')[1]!
+    await userEvent.hover(b)
+    await frames()
+    el.focus()
+    await userEvent.keyboard('{ArrowUp}')
+    expect(highlighted(el)).toBe('A')
+    // The press never moves the mouse and the item takes no focus: no focusin follows it.
+    await userEvent.click(b)
+    expect(document.activeElement).toBe(el)
+    expect(highlighted(el)).toBe('B')
+    await parkPointer()
+    expect(highlighted(el)).toBeNull()
+  })
+
   it('does not highlight focus handed back without a ring, as when the window is activated again', async () => {
     await parkPointer()
     const el = append(h('div', {}, [item('A', { tabindex: '0' })]))

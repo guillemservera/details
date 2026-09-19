@@ -5,8 +5,8 @@ import { gzipSync } from 'node:zlib'
 
 // Each subpath is measured with the relative and core modules it imports, which is what a consumer bundles.
 const budgets = {
-  'arrow-navigation': 5,
-  'highlight-indicator': 7, // Includes freezing in-flight paint and hidden-box cleanup.
+  'arrow-navigation': 5.25,
+  'highlight-indicator': 7.25, // Includes freezing in-flight paint and hidden-box cleanup.
   'input-capabilities': 1.5,
   'morph-text': 5,
   'platform': 1,
