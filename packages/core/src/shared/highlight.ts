@@ -189,24 +189,32 @@ export function createHighlightStore(): HighlightStore {
     if (!entry) {
       const observer = new MutationObserver(reconcile)
       observer.observe(el, { subtree: true, childList: true, attributes: true, attributeFilter: ['data-index', ...DISABLED_ATTRS] })
-      // Only focus with a ring is navigation. A click's focus leaves the highlight to the pointer, so leaving the list
-      // still clears it; focus the browser hands back when the window is activated again (or a script's, after a
-      // click) must not light up the item clicked last.
+      let press: string | undefined
+      const onPointerDown = (e: PointerEvent) => { press = e.pointerType }
+      // A mouse press hands the highlight to the pointer: it moves off what the keyboard highlighted even when the
+      // click never moves the mouse, and leaving the list still clears it (touch is not hover: a tap leaves none).
+      // Any other focus takes the highlight only with a ring, so focus the browser hands back when the window is
+      // activated again, or a script's after a click, does not light up the item clicked last.
       const onFocusIn = (e: FocusEvent) => {
         const target = e.target as Element
-        if (target === el || !target.matches(':focus-visible')) return
+        if (target === el) return
+        const pressed = target.matches(':active')
+        if (pressed ? press !== 'mouse' : !target.matches(':focus-visible')) return
+        if (pressed) store.resumePointer()
         const item = target.closest(ITEM)
-        highlight(isEligible(item) ? item : null, 'focus')
+        highlight(isEligible(item) ? item : null, pressed ? 'pointer' : 'focus')
       }
       const onFocusOut = (e: FocusEvent) => {
         if (source !== 'pointer' && !el.contains(e.relatedTarget as Node | null)) highlight(null, null)
       }
+      el.addEventListener('pointerdown', onPointerDown, { capture: true, passive: true })
       el.addEventListener('focusin', onFocusIn)
       el.addEventListener('focusout', onFocusOut)
       entry = {
         count: 0,
         detach() {
           observer.disconnect()
+          el.removeEventListener('pointerdown', onPointerDown, true)
           el.removeEventListener('focusin', onFocusIn)
           el.removeEventListener('focusout', onFocusOut)
           el.removeAttribute(KEYBOARD_ATTR)

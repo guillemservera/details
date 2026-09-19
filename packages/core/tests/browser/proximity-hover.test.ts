@@ -272,6 +272,26 @@ describe('focus', () => {
     expect(highlighted(el)).toBeNull()
   })
 
+  it('takes the highlight to a clicked item, even when the click never moves the mouse', async () => {
+    await parkPointer()
+    const el = append(h('div', { tabindex: '0' }, [item('A'), item('B'), item('C')]))
+    track(createProximityHover(el))
+    track(createArrowNavigation(el))
+    const b = el.querySelectorAll('button')[1]!
+    await userEvent.hover(b)
+    await frames()
+    expect(highlighted(el)).toBe('B')
+    // The keyboard takes over while the pointer rests on B, then B is clicked without the mouse moving.
+    el.focus()
+    await userEvent.keyboard('{ArrowUp}')
+    expect(highlighted(el)).toBe('A')
+    await userEvent.click(b)
+    expect(highlighted(el)).toBe('B')
+    // The pointer owns it again, so leaving the list clears it.
+    await parkPointer()
+    expect(highlighted(el)).toBeNull()
+  })
+
   it('does not highlight focus handed back without a ring, as when the window is activated again', async () => {
     await parkPointer()
     const el = append(h('div', {}, [item('A', { tabindex: '0' })]))
