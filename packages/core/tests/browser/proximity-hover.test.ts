@@ -248,3 +248,42 @@ describe('createProximityHover', () => {
     expect(highlighted(el)).toBe('A')
   })
 })
+
+describe('focus', () => {
+  it('highlights keyboard focus, the focus with a ring', async () => {
+    await parkPointer()
+    const before = append(h('button', {}, ['Before']))
+    const el = append(h('div', {}, [item('A', { tabindex: '0' }), item('B', { tabindex: '0' })]))
+    track(createProximityHover(el))
+    before.focus()
+    await userEvent.keyboard('{Tab}')
+    expect(document.activeElement?.textContent).toBe('A')
+    expect(highlighted(el)).toBe('A')
+  })
+
+  it('leaves a clicked item to the pointer: leaving the list clears its highlight', async () => {
+    await parkPointer()
+    const el = append(h('div', {}, [item('A', { tabindex: '0' }), item('B', { tabindex: '0' })]))
+    track(createProximityHover(el))
+    await userEvent.click(el.querySelectorAll('button')[0]!)
+    expect(document.activeElement?.textContent).toBe('A')
+    expect(highlighted(el)).toBe('A')
+    await parkPointer()
+    expect(highlighted(el)).toBeNull()
+  })
+
+  it('does not highlight focus handed back without a ring, as when the window is activated again', async () => {
+    await parkPointer()
+    const el = append(h('div', {}, [item('A', { tabindex: '0' })]))
+    track(createProximityHover(el))
+    const a = el.querySelector('button')!
+    await userEvent.click(a)
+    await parkPointer()
+    expect(highlighted(el)).toBeNull()
+    // Window activation returns focus to the element clicked last: it loses focus to nothing and gets it back.
+    a.blur()
+    a.focus()
+    expect(a.matches(':focus-visible')).toBe(false)
+    expect(highlighted(el)).toBeNull()
+  })
+})

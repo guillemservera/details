@@ -189,9 +189,14 @@ export function createHighlightStore(): HighlightStore {
     if (!entry) {
       const observer = new MutationObserver(reconcile)
       observer.observe(el, { subtree: true, childList: true, attributes: true, attributeFilter: ['data-index', ...DISABLED_ATTRS] })
+      // Only focus with a ring is navigation. A click's focus leaves the highlight to the pointer, so leaving the list
+      // still clears it; focus the browser hands back when the window is activated again (or a script's, after a
+      // click) must not light up the item clicked last.
       const onFocusIn = (e: FocusEvent) => {
-        const item = (e.target as Element).closest(ITEM)
-        if (e.target !== el) highlight(isEligible(item) ? item : null, 'focus')
+        const target = e.target as Element
+        if (target === el || !target.matches(':focus-visible')) return
+        const item = target.closest(ITEM)
+        highlight(isEligible(item) ? item : null, 'focus')
       }
       const onFocusOut = (e: FocusEvent) => {
         if (source !== 'pointer' && !el.contains(e.relatedTarget as Node | null)) highlight(null, null)
