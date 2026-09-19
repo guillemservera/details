@@ -189,14 +189,20 @@ export function createHighlightStore(): HighlightStore {
     if (!entry) {
       const observer = new MutationObserver(reconcile)
       observer.observe(el, { subtree: true, childList: true, attributes: true, attributeFilter: ['data-index', ...DISABLED_ATTRS] })
+      // This container's own item under `target`: `closest` alone climbs past `el` when the list sits inside another
+      // list's item, and this store would write its highlight outside the container it observes.
+      const itemUnder = (target: Element) => {
+        const item = target.closest(ITEM)
+        return item && item !== el && el.contains(item) && isEligible(item) ? item : null
+      }
       // A mouse press hands the highlight to the item it presses, in the press itself: the item may take no focus, or
       // hold it already, and a click that never moves the mouse emits no pointermove either. The pointer owns it
       // again, so leaving the list clears it. Touch is not hover: a tap leaves no highlight. A press outside an item
       // (a gap, a heading) leaves the pointer's own pick alone.
       const onPointerDown = (e: PointerEvent) => {
         if (e.pointerType !== 'mouse') return
-        const item = (e.target as Element).closest(ITEM)
-        if (!isEligible(item)) return
+        const item = itemUnder(e.target as Element)
+        if (!item) return
         store.resumePointer()
         highlight(item, 'pointer')
       }
@@ -205,8 +211,7 @@ export function createHighlightStore(): HighlightStore {
       const onFocusIn = (e: FocusEvent) => {
         const target = e.target as Element
         if (target === el || !target.matches(':focus-visible')) return
-        const item = target.closest(ITEM)
-        highlight(isEligible(item) ? item : null, 'focus')
+        highlight(itemUnder(target), 'focus')
       }
       const onFocusOut = (e: FocusEvent) => {
         if (source !== 'pointer' && !el.contains(e.relatedTarget as Node | null)) highlight(null, null)

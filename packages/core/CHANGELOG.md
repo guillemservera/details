@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.3
+
+### Patch Changes
+
+- A store never highlights an item outside the container it observes. When a list sits inside another list's item, a press or focus on its gaps and headings climbed past the container and highlighted the outer item, which this store does not observe, so that foreign highlight could persist.
+
 ## 0.2.2
 
 ### Patch Changes

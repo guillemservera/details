@@ -312,6 +312,20 @@ describe('focus', () => {
     expect(highlighted(el)).toBeNull()
   })
 
+  it('never highlights an item outside its own container', async () => {
+    await parkPointer()
+    const heading = h('div', { style: 'display: block; height: 30px' }, ['Group'])
+    const inner = h('div', { tabindex: '0', style: 'display: block' }, [heading, item('A'), item('B')])
+    // The inner list sits inside an item of an outer one, where `closest` would climb past it.
+    const outer = append(h('div', {}, [h('div', { 'data-highlight-item': '', 'style': 'display: block' }, [inner])]))
+    track(createProximityHover(inner))
+    const row = outer.querySelector('[data-highlight-item]')!
+    // A press on the inner list's heading, without moving the mouse: the inner list may pick its own nearest item
+    // across the gap, but the outer one is never its business.
+    heading.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerType: 'mouse' }))
+    expect(row.hasAttribute('data-highlighted')).toBe(false)
+  })
+
   it('does not highlight focus handed back without a ring, as when the window is activated again', async () => {
     await parkPointer()
     const el = append(h('div', {}, [item('A', { tabindex: '0' })]))
