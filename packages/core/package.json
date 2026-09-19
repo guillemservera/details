@@ -1,6 +1,6 @@
 {
   "name": "@guillemservera/details-core",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Framework-agnostic core of details: DOM behavior for proximity hover, keyboard navigation, indicators and text effects.",
   "type": "module",
   "license": "MIT",
