@@ -189,20 +189,24 @@ export function createHighlightStore(): HighlightStore {
     if (!entry) {
       const observer = new MutationObserver(reconcile)
       observer.observe(el, { subtree: true, childList: true, attributes: true, attributeFilter: ['data-index', ...DISABLED_ATTRS] })
-      let press: string | undefined
-      const onPointerDown = (e: PointerEvent) => { press = e.pointerType }
-      // A mouse press hands the highlight to the pointer: it moves off what the keyboard highlighted even when the
-      // click never moves the mouse, and leaving the list still clears it (touch is not hover: a tap leaves none).
-      // Any other focus takes the highlight only with a ring, so focus the browser hands back when the window is
-      // activated again, or a script's after a click, does not light up the item clicked last.
+      // A mouse press hands the highlight to the item it presses, in the press itself: the item may take no focus, or
+      // hold it already, and a click that never moves the mouse emits no pointermove either. The pointer owns it
+      // again, so leaving the list clears it. Touch is not hover: a tap leaves no highlight. A press outside an item
+      // (a gap, a heading) leaves the pointer's own pick alone.
+      const onPointerDown = (e: PointerEvent) => {
+        if (e.pointerType !== 'mouse') return
+        const item = (e.target as Element).closest(ITEM)
+        if (!isEligible(item)) return
+        store.resumePointer()
+        highlight(item, 'pointer')
+      }
+      // Focus takes the highlight only with a ring: focus the browser hands back when the window is activated again,
+      // or a script's after a click, must not light up the item clicked last.
       const onFocusIn = (e: FocusEvent) => {
         const target = e.target as Element
-        if (target === el) return
-        const pressed = target.matches(':active')
-        if (pressed ? press !== 'mouse' : !target.matches(':focus-visible')) return
-        if (pressed) store.resumePointer()
+        if (target === el || !target.matches(':focus-visible')) return
         const item = target.closest(ITEM)
-        highlight(isEligible(item) ? item : null, pressed ? 'pointer' : 'focus')
+        highlight(isEligible(item) ? item : null, 'focus')
       }
       const onFocusOut = (e: FocusEvent) => {
         if (source !== 'pointer' && !el.contains(e.relatedTarget as Node | null)) highlight(null, null)
