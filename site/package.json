@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@astrojs/react": "^6.0.5",
-    "@astrojs/vue": "^7.0.2",
+    "@astrojs/vue": "^7.0.3",
     "@guillemservera/details-core": "workspace:*",
     "@guillemservera/react-details": "workspace:*",
     "@guillemservera/vue-details": "workspace:*",
